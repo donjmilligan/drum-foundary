@@ -1,0 +1,49 @@
+Drum Foundry
+Copyright (c) 2026 Don Milligan
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License, version 3, as published by
+the Free Software Foundation (the full text is in the LICENSE file), together
+with the additional terms below.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+
+ADDITIONAL TERMS (under section 7 of the GNU Affero General Public License)
+
+1. Attribution (section 7(b)). You must keep the notice "Copyright (c) 2026 Don
+   Milligan" and this NOTICE file in all copies of the source code, in whole or
+   in part. Any work based on Drum Foundry must show the attribution "Based on
+   Drum Foundry by Don Milligan" in its Appropriate Legal Notices: for a
+   plug-in or application, in its About, credits or settings screen, and if it
+   has none, in its documentation.
+
+2. Modified versions (section 7(c)). A modified version must be clearly marked
+   as modified, and must not be presented as the original Drum Foundry or as
+   made or endorsed by Don Milligan.
+
+3. Names and logos (section 7(e)). This licence grants no right to use the
+   names "Drum Foundry", "Milligan Audio" or "Theres Tears Records", or their
+   logos, as trademarks. A modified version must use a different product name,
+   though it may say that it is based on Drum Foundry.
+
+
+NOT COVERED BY THIS LICENCE
+
+- The Theres Tears Records images in assets/ are (c) Theres Tears Records, all
+  rights reserved. They may not be reused without permission, and a modified
+  version must remove or replace them.
+
+
+THIRD-PARTY CODE
+
+- JUCE (libs/JUCE, or downloaded at build time): (c) Raw Material Software
+  Limited, used under the GNU Affero General Public License version 3.
+- Cloud Seed (libs/CloudSeedCore): (c) 2024 Ghost Note Audio / Ghost Note
+  Engineering Ltd, MIT License; see libs/CloudSeedCore/LICENSE.
+- Inter (assets/fonts/Inter-*.ttf): (c) 2016 The Inter Project Authors, SIL Open
+  Font License 1.1; see assets/fonts/Inter-OFL.txt.
+- Archivo (assets/fonts/Archivo*.ttf): (c) 2020 The Archivo Project Authors, SIL
+  Open Font License 1.1; see assets/fonts/Archivo-OFL.txt.

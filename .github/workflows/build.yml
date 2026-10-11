@@ -1,0 +1,239 @@
+# Builds Drum Foundry on Windows and macOS (universal) and packages each one
+# as an installer:
+#   - Windows: dist\DrumFoundry-<version>-Windows-Setup.exe (Inno Setup)
+#   - macOS:   dist/DrumFoundry-<version>-macOS.pkg (packaging/macos/make-pkg.sh)
+# Every run keeps the installers, plus the raw plug-ins and app for testing, as
+# downloadable artifacts on the run's page.
+#
+# Pushing a tag vX.Y.Z also publishes both installers as a GitHub pre-release.
+# To make a release:
+#   1. Bump the version in CMakeLists.txt: project(DrumFoundry VERSION X.Y.Z ...)
+#   2. Commit and push that to main.
+#   3. git tag vX.Y.Z && git push origin vX.Y.Z
+# The release job fails if the tag doesn't match the CMake version.
+#
+# The installers are unsigned: macOS Gatekeeper and Windows SmartScreen warn on
+# first open. Signing needs the certificates in repository secrets (see the
+# notes in the macos job); it isn't set up yet.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read version from CMakeLists.txt
+        id: version
+        shell: pwsh
+        run: |
+          $m = Select-String -Path CMakeLists.txt -Pattern '^\s*project\(DrumFoundry\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)' | Select-Object -First 1
+          if (-not $m) { throw "Couldn't find 'project(DrumFoundry VERSION x.y.z' in CMakeLists.txt" }
+          $version = $m.Matches[0].Groups[1].Value
+          Write-Host "Version: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -A x64 -DDRUMFOUNDRY_BUILD_TOOLS=OFF -DDRUMFOUNDRY_COPY_PLUGINS=OFF
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      # Inno Setup 6 is preinstalled on the windows-2025 runner image. Fall back
+      # to Chocolatey if it's missing or older than 6.3 (the script uses
+      # x64compatible, which needs 6.3).
+      - name: Find Inno Setup
+        id: inno
+        shell: pwsh
+        run: |
+          function Find-Iscc {
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+            )
+            $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+            if ($cmd) { $candidates += $cmd.Source }
+            foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return $c } }
+            return $null
+          }
+          function Test-IsccVersion($path) {
+            $v = (Get-Item $path).VersionInfo
+            $ver = [version]::new($v.FileMajorPart, $v.FileMinorPart)
+            Write-Host "Found $path (version $($v.FileVersion))"
+            return $ver -ge [version]'6.3'
+          }
+
+          $iscc = Find-Iscc
+          if (-not $iscc -or -not (Test-IsccVersion $iscc)) {
+            Write-Host "Inno Setup 6.3+ not found; installing with Chocolatey"
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "choco install innosetup failed ($LASTEXITCODE)" }
+            $iscc = Find-Iscc
+            if (-not $iscc) { throw "ISCC.exe still not found after installing Inno Setup" }
+            if (-not (Test-IsccVersion $iscc)) { throw "Inno Setup at $iscc is older than 6.3" }
+          }
+          "iscc=$iscc" >> $env:GITHUB_OUTPUT
+
+      - name: Build installer
+        shell: pwsh
+        env:
+          ISCC: ${{ steps.inno.outputs.iscc }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE 'build\DrumFoundry_artefacts\Release'
+          & $env:ISCC "/DAppVersion=$env:VERSION" "/DBuildDir=$buildDir" 'packaging\windows\DrumFoundry.iss'
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
+          $setup = "dist\DrumFoundry-$env:VERSION-Windows-Setup.exe"
+          if (-not (Test-Path $setup)) { throw "Expected $setup, but it wasn't created" }
+          Get-Item $setup | Format-List FullName, Length
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-installer
+          path: dist/DrumFoundry-${{ steps.version.outputs.version }}-Windows-Setup.exe
+          if-no-files-found: error
+
+      - name: Upload raw plug-in and app
+        uses: actions/upload-artifact@v7
+        with:
+          name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-raw
+          path: |
+            build/DrumFoundry_artefacts/Release/VST3
+            build/DrumFoundry_artefacts/Release/Standalone/Drum Foundry.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read version from CMakeLists.txt
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -nE 's/^[[:space:]]*project\(DrumFoundry[[:space:]]+VERSION[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)
+          if [ -z "$version" ]; then
+            echo "::error::Couldn't find 'project(DrumFoundry VERSION x.y.z' in CMakeLists.txt"
+            exit 1
+          fi
+          echo "Version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install Ninja
+        shell: bash
+        run: brew install ninja
+
+      # make-pkg.sh configures and builds a universal Release into build-release/
+      # and writes dist/DrumFoundry-<version>-macOS.pkg.
+      # Signing and notarisation: the script signs when DEVELOPER_ID_APPLICATION,
+      # DEVELOPER_ID_INSTALLER and NOTARY_PROFILE are set. They're unset here, so
+      # the .pkg is unsigned. Turning that on needs the Developer ID certificates
+      # and notary credentials in repository secrets, imported into a keychain
+      # before this step.
+      - name: Build installer
+        shell: bash
+        run: bash packaging/macos/make-pkg.sh
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: DrumFoundry-${{ steps.version.outputs.version }}-macOS-installer
+          path: dist/DrumFoundry-${{ steps.version.outputs.version }}-macOS.pkg
+          if-no-files-found: error
+
+      # For testing only: artifacts are zipped, which drops the executable bit
+      # inside the bundles. Use the .pkg to install.
+      - name: Upload raw plug-ins and app
+        uses: actions/upload-artifact@v7
+        with:
+          name: DrumFoundry-${{ steps.version.outputs.version }}-macOS-raw
+          path: |
+            build-release/DrumFoundry_artefacts/Release/VST3
+            build-release/DrumFoundry_artefacts/Release/AU
+            build-release/DrumFoundry_artefacts/Release/Standalone
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Check the tag matches the CMake version
+        shell: bash
+        env:
+          WINDOWS_VERSION: ${{ needs.windows.outputs.version }}
+          MACOS_VERSION: ${{ needs.macos.outputs.version }}
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$WINDOWS_VERSION" != "$MACOS_VERSION" ]; then
+            echo "::error::The Windows and macOS builds read different versions ($WINDOWS_VERSION vs $MACOS_VERSION)."
+            exit 1
+          fi
+          if [ "$tag_version" != "$WINDOWS_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the version in CMakeLists.txt ($WINDOWS_VERSION). Bump project(DrumFoundry VERSION ...) to $tag_version, or tag v$WINDOWS_VERSION instead."
+            exit 1
+          fi
+          echo "Tag $GITHUB_REF_NAME matches CMake version $WINDOWS_VERSION"
+
+      - name: Download installers
+        uses: actions/download-artifact@v8
+        with:
+          pattern: DrumFoundry-*-installer
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.windows.outputs.version }}
+        run: |
+          files=(
+            "dist/DrumFoundry-${VERSION}-Windows-Setup.exe"
+            "dist/DrumFoundry-${VERSION}-macOS.pkg"
+          )
+          for f in "${files[@]}"; do
+            [ -f "$f" ] || { echo "::error::Missing $f"; ls -la dist; exit 1; }
+          done
+
+          # Re-running the job for a tag that already has a release replaces
+          # its installers instead of failing.
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "Drum Foundry ${VERSION}" \
+              --generate-notes \
+              --prerelease
+          fi
