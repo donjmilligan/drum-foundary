@@ -11,7 +11,7 @@
 namespace drum
 {
 
-/** The synthesised body styles (Classic, Membrane, 808, 909, Kick, FM, the
+/** The synthesised body styles (Classic, Membrane, Wood, 808, 909, Kick, FM, the
     kick bodies Round, Taper, Hard, Fold and Tonal, and the basic waveforms Sine,
     Saw, Square, Round Square and Triangle): the
     Body layer's tonal drum head, and any extra layer whose source is Body.
@@ -19,7 +19,7 @@ namespace drum
 
     The style is fixed when the hit starts, and so are the parts of Shape and
     Head Modes that shape the strike (Membrane's mode tilt and tension glide,
-    the 909's Snap, the 808's trigger pulse). Everything in Settings is read on
+    the 909's Snap, the 808's trigger pulse, Wood's strike). Everything in Settings is read on
     every render() call. See StyleInfo.h for what the knobs mean per style.
 
     Pitch: `pitch` is the pitch curve in semitones over the base pitch. Every
@@ -33,6 +33,7 @@ struct BodyGen
     static constexpr int numModes = 6;          // Classic head modes
     static constexpr int numMembraneModes = 14; // Membrane modes above (1,1)
     static constexpr int numHarmonics = 7;      // Tonal: harmonics 2..8
+    static constexpr int numWoodModes = 8;      // Wood: modes above the fundamental
 
     /** Per-block settings. */
     struct Settings
@@ -109,6 +110,32 @@ struct BodyGen
 
         // The basic waveforms start from 0 where they can: the saw mid-ramp; the square
         // can't (it fades in instead, see renderBasic()).
+        // Wood: the strike is a raised-cosine pulse, 2 ms (Hardness 0) down to 0.1 ms, and
+        // a burst of grain that rings the wood modes only. The grain's generator restarts
+        // with every hit, so a preset renders the same each time.
+        for (int m = 0; m <= numWoodModes; ++m)
+            woodRe[m] = woodIm[m] = 0.0f;
+        {
+            const float soft = 1.0f - juce::jlimit (0.0f, 1.0f, shape);
+            woodPulse = juce::jmax (2.0f, (0.0001f + 0.0019f * soft * soft) * sampleRate);
+            woodAge = 0;
+            woodPulsePending = true;
+            woodGrainEnv = 1.0f;
+            woodSeed = 0x2545F491u;
+            const float tilt = 1.4f - 1.1f * juce::jlimit (0.0f, 1.0f, shape);
+            float power = 0.0f;
+            for (int m = 0; m < numWoodModes; ++m)
+            {
+                woodAmp[m] = kWoodWeights[m] * std::pow (kWoodRatios[m], -tilt);
+                power += woodAmp[m] * woodAmp[m];
+            }
+            // At Knock 0 dB the modes are eight times the fundamental, which plays at half level (see
+            // renderWood()): even with every mode lined up the body stays under ~11 x full scale.
+            const float norm = 4.0f / std::sqrt (power);
+            for (int m = 0; m < numWoodModes; ++m)
+                woodAmp[m] *= norm * kWoodSigns[m];
+        }
+
         basicAge = 0;
         triPeak = 0.5f + 0.45f * juce::jlimit (0.0f, 1.0f, shape);
         if (style == bodySaw)
@@ -124,6 +151,7 @@ struct BodyGen
         switch (style)
         {
             case bodyMembrane: renderMembrane (from, n, s, pitch, level, out, couple); break;
+            case bodyWood:     renderWood (from, n, s, pitch, level, out, couple); break;
             case body808:      render808 (from, n, s, pitch, level, out, couple); break;
             case body909:      render909 (from, n, s, pitch, level, out, couple); break;
             case bodyKick:     renderKick (from, n, s, pitch, level, out, couple); break;
@@ -159,6 +187,14 @@ private:
     static constexpr float kMembraneRatios[numMembraneModes] { 2.136f, 2.296f, 2.653f, 2.918f, 3.156f, 3.501f, 3.600f,
                                                                3.649f, 4.060f, 4.132f, 4.231f, 4.602f, 4.610f, 4.832f };
     static constexpr float kGlideSeconds = 0.005f; // Membrane tension glide and 909 Snap
+
+    // Wood: the resonances of two wood snares over their fundamental, in rising order,
+    // and how strongly each one rang. kWoodKnock is the main knock, which Spread moves.
+    static constexpr float kWoodRatios[numWoodModes]  { 1.61f, 1.93f, 2.54f, 3.26f, 3.49f, 4.34f, 4.83f, 5.79f };
+    static constexpr float kWoodWeights[numWoodModes] { 0.15f, 0.15f, 0.8f,  1.0f,  0.8f,  0.6f,  1.0f,  0.6f };
+    static constexpr float kWoodKnock = 2.54f;
+    // Each mode's polarity at the strike point, so they don't all peak together at the hit.
+    static constexpr float kWoodSigns[numWoodModes]   { 1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f };
 
     static constexpr float kOctavesPerSt = 1.0f / 12.0f;
 
@@ -307,6 +343,74 @@ private:
             coupleSig[i] = fundamental;
         }
         memLive = live;
+    }
+
+    void renderWood (int from, int n, const Settings& p, const float* ctlPitch, const float* ctlBody, float* bodyL, float* coupleSig) noexcept
+    {
+        // Damped resonators (as on the 808) at the fundamental and the wood modes, rung by
+        // the strike. The pulse is normalised to unit area, so a soft (long) strike rolls the
+        // upper modes off by itself. Wood damps the whole body together: every resonator, the
+        // fundamental included, decays over Length x (0.03 + 0.6 x (1 - Damping)^2), as
+        // measured (the ~1.1 kHz mode rings as long as the ~600 Hz one and the fundamental),
+        // and the drawn level curve shapes the rest.
+        // The grain (white noise, decaying over ~0.7 ms) rings the modes only. A mode that
+        // would pass kMaxInc is muted, and holds still.
+        const float spread = (juce::jmax (1.0f, p.otRatio) - 1.0f) / (kWoodKnock - 1.0f);
+        const float damp = juce::jlimit (0.0f, 1.0f, p.modes);
+        const float modeTau = p.lengthSamples * (0.03f + 0.6f * (1.0f - damp) * (1.0f - damp));
+        const float decay = std::exp (-1.0f / juce::jmax (1.0f, modeTau));
+        float ratio[numWoodModes + 1];
+        ratio[0] = 1.0f;
+        for (int m = 0; m < numWoodModes; ++m)
+            ratio[m + 1] = 1.0f + (kWoodRatios[m] - 1.0f) * spread;
+
+        if (woodPulsePending)
+        {
+            // At most half a period of the fundamental at its starting pitch, as on the 808, so a
+            // high-pitched body isn't struck by a pulse with a null at its own frequency.
+            woodPulsePending = false;
+            const float inc0 = pitchInc (p.baseInc, ctlPitch[from] * kOctavesPerSt);
+            if (inc0 > 0.0f)
+                woodPulse = juce::jlimit (2.0f, juce::jmax (2.0f, 0.5f / inc0), woodPulse);
+        }
+
+        const float pulseNorm = 2.0f / woodPulse; // a raised cosine's area is half its length
+        const int pulseLen = (int) woodPulse;
+        const float grainDecay = std::exp (-1.0f / (0.0007f * sampleRate));
+        const float grainGain = 0.6f * pulseNorm;
+        const float bodyGain = p.gain;
+        const float knock = p.otGain;
+
+        for (int i = from; i < n; ++i)
+        {
+            const float inc = pitchInc (p.baseInc, ctlPitch[i] * kOctavesPerSt);
+            const float x = woodAge < pulseLen ? pulseAt (woodAge++, woodPulse) * pulseNorm : 0.0f;
+
+            woodSeed = woodSeed * 1664525u + 1013904223u;
+            const float grain = woodGrainEnv > 1.0e-4f ? ((float) (woodSeed >> 8) * (2.0f / 16777216.0f) - 1.0f) * woodGrainEnv * grainGain : 0.0f;
+            woodGrainEnv *= grainDecay;
+
+            float modeSum = 0.0f;
+            for (int m = 0; m <= numWoodModes; ++m)
+            {
+                const float mInc = inc * ratio[m];
+                const bool audible = mInc < dsp::kMaxInc;
+                const float w = audible ? mInc : 0.0f;
+                const float c = decay * dsp::fastSin01 (w + 0.25f);
+                const float sn = decay * dsp::fastSin01 (w);
+                const float drive = m == 0 ? x : x + grain;
+                const float re = c * woodRe[m] - sn * woodIm[m] + drive;
+                const float im = sn * woodRe[m] + c * woodIm[m];
+                woodRe[m] = re;
+                woodIm[m] = im;
+                if (m > 0 && audible)
+                    modeSum += im * woodAmp[m - 1];
+            }
+
+            const float fundamental = woodIm[0];
+            bodyL[i] = bodyGain * ctlBody[i] * (0.5f * fundamental + knock * modeSum);
+            coupleSig[i] = fundamental;
+        }
     }
 
     void render808 (int from, int n, const Settings& p, const float* ctlPitch, const float* ctlBody, float* bodyL, float* coupleSig) noexcept
@@ -804,6 +908,13 @@ private:
     float pulseLength = 2;                      // trigger pulse, samples
     int pulseAge = 0;
     bool resNormPending = true;
+
+    float woodRe[numWoodModes + 1] {}, woodIm[numWoodModes + 1] {}; // Wood resonators: the fundamental, then the modes
+    float woodAmp[numWoodModes] {};              // Wood: each mode's level (Hardness tilts them)
+    float woodPulse = 2, woodGrainEnv = 0;       // Wood: strike length (samples), grain envelope
+    int woodAge = 0;
+    bool woodPulsePending = true;                // Wood: the strike is fitted to the pitch on the first render
+    uint32_t woodSeed = 0;
 
     float fmIndexEnv = 1, fmFb[2] {}, phMod = 0; // FM
     float driveEnv = 1;                          // Kick's drive, Taper's point, Fold's folding

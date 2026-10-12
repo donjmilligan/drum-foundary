@@ -100,6 +100,8 @@ public:
         before the reverb existed. */
     void setReverbEnabled (bool shouldBeEnabled) noexcept { reverbEnabled = shouldBeEnabled; }
     bool isReverbIdle() const noexcept { return reverb.isIdle(); }
+    /** See Reverb::setRealtime(). */
+    void setRealtime (bool isRealtime) { reverb.setRealtime (isRealtime); }
 
     /** For tests: with the output filter disabled the chain runs exactly as it
         did before the filter existed (with both sides off it should anyway). */
@@ -126,6 +128,7 @@ private:
     Clipper chainClippers[2];
 
     juce::SmoothedValue<float> outGain;
+    juce::SmoothedValue<float> masterOut;        // the final volume, after the output stage
     juce::SmoothedValue<float> revLevel;         // the wet level; follows the reverb switch
     std::vector<float> dryL, dryR;               // the reverb's input while revLevel moves
     bool reverbCleared = false;                  // switched off, faded out and reset

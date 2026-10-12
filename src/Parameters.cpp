@@ -227,6 +227,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     addChoice (l, pid::clip,        "Clip Mode",    clipModeNames, 1);
     addFloat  (l, pid::clipDrive,   "Clip Drive",   range (0.0f, 24.0f), 0.0f, dbAttrs());
     addFloat  (l, pid::clipCeiling, "Clip Ceiling", range (-12.0f, 0.0f), 0.0f, dbAttrs());
+    addFloat  (l, pid::masterOut,   "Master Out",   range (kMinLevelDb, 6.0f), 0.0f, levelAttrs());
 
     addBool   (l, pid::revOn,       "Reverb On",        true);
     addFloat  (l, pid::revMix,      "Reverb Mix",       range (0.0f, 1.0f), 0.0f, percentAttrs());
@@ -614,7 +615,7 @@ const juce::StringArray& allParameterIds()
         pid::clickType, pid::clickLevel, pid::clickTone, pid::clickLength,
         pid::driveOn, pid::driveType, pid::driveAmount, pid::driveMix,
         pid::eqOn, pid::eqStyle,
-        pid::outGain, pid::clip,
+        pid::outGain, pid::clip, pid::masterOut,
         pid::revOn, pid::revMix, pid::revSize, pid::revDecay, pid::revPreDelay, pid::revLowCut, pid::revHighCut,
         pid::revGate, pid::revGateTime, pid::revGateFade,
         pid::scTrigger, pid::scThreshold, pid::scRetrigger,
@@ -659,8 +660,10 @@ const juce::StringArray& sessionOnlyParameterIds()
 {
     static const juce::StringArray ids = []
     {
-        // Solo is a mixing aid, like the sidechain settings: part of the session, not the patch.
-        juce::StringArray a { pid::scTrigger, pid::scThreshold, pid::scRetrigger, pid::bodySolo, pid::noiseSolo, pid::clickSolo };
+        // Solo is a mixing aid, like the sidechain settings and Master Out (the instrument's
+        // fader): part of the session, not the patch.
+        juce::StringArray a { pid::scTrigger, pid::scThreshold, pid::scRetrigger, pid::bodySolo, pid::noiseSolo, pid::clickSolo,
+                              pid::masterOut };
         for (int n = 0; n < kNumExtraLayers; ++n)
             a.add (layerParamId (n, pid::laySolo));
         return a;
@@ -681,7 +684,7 @@ ParamReader::ParamReader (juce::AudioProcessorValueTreeState& s)
       clickTone (get (s, pid::clickTone)), clickLength (get (s, pid::clickLength)),
       driveOn (get (s, pid::driveOn)), driveType (get (s, pid::driveType)), driveAmount (get (s, pid::driveAmount)), driveMix (get (s, pid::driveMix)),
       eqOn (get (s, pid::eqOn)), eqStyle (get (s, pid::eqStyle)),
-      outGain (get (s, pid::outGain)), clip (get (s, pid::clip)),
+      outGain (get (s, pid::outGain)), clip (get (s, pid::clip)), masterOut (get (s, pid::masterOut)),
       revOn (get (s, pid::revOn)), revMix (get (s, pid::revMix)), revSize (get (s, pid::revSize)), revDecay (get (s, pid::revDecay)),
       revPreDelay (get (s, pid::revPreDelay)), revLowCut (get (s, pid::revLowCut)),
       revHighCut (get (s, pid::revHighCut)), revGate (get (s, pid::revGate)),
@@ -853,6 +856,7 @@ DrumParams ParamReader::read() const noexcept
     p.clipMode      = choiceIndex (clip, clipModeNames);
     p.clipDriveDb   = clipDrive.load();
     p.clipCeilingDb = clipCeiling.load();
+    p.masterOut     = levelDbToGain (masterOut.load());
 
     p.revOn         = revOn.load() > 0.5f;
     p.revMix        = revMix.load();

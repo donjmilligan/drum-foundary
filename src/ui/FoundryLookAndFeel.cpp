@@ -23,6 +23,17 @@ juce::Colour colours::forEnvelope (int envIndex)
     }
 }
 
+juce::Colour colours::forLayer (int chartLayer)
+{
+    switch (chartLayer)
+    {
+        case 0:  return body;
+        case 1:  return noise;
+        case 2:  return click;
+        default: return layer;
+    }
+}
+
 juce::Colour colours::lfo (int index)
 {
     static const juce::Colour lfos[] { juce::Colour (0xffc08cff), juce::Colour (0xff4fe3c1), juce::Colour (0xffff8fb8) };

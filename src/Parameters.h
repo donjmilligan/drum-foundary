@@ -97,6 +97,7 @@ namespace pid
     inline constexpr auto clip    = "clip";        // choice: clipModeNames
     inline constexpr auto clipDrive   = "clipDrive";   // dB into the clipper
     inline constexpr auto clipCeiling = "clipCeiling"; // dBFS the clipper limits to
+    inline constexpr auto masterOut   = "masterOut";   // dB, the final volume after the output stage (session only)
 
     // Reverb, with a gate that cuts the tail a set time after each hit
     inline constexpr auto revOn       = "revOn";
@@ -237,14 +238,14 @@ int modTargetIndex (const juce::String& paramId);
 // Built-in sound sources per layer. "Sample" is always last and plays the
 // layer's imported sample (see SampleData.h); the other entries are synthesised.
 inline const juce::StringArray bodyStyleNames  { "Classic", "Membrane", "808", "909", "Kick", "FM", "Round", "Taper", "Hard", "Fold", "Tonal",
-                                                   "Sine", "Saw", "Square", "Round Square", "Triangle", "Sample" };
+                                                   "Sine", "Saw", "Square", "Round Square", "Triangle", "Wood", "Sample" };
 inline const juce::StringArray noiseStyleNames { "Wires", "White", "Pink", "Metallic", "Crackle", "Sample" };
 inline const juce::StringArray clickTypeNames  { "Tick", "Snap", "Stick", "Rim", "Pop", "Beater", "Clap", "Felt", "Plastic", "Skin", "Wood", "Tok", "Sample" };
 /** Extra layer source: an imported sample, or a simple synth voice. */
 inline const juce::StringArray layerSourceNames { "Sample", "Sine", "Noise", "Click", "Body" };
 /** Styles an extra Body layer can use: the core list without "Sample". */
 inline const juce::StringArray layerBodyStyleNames { "Classic", "Membrane", "808", "909", "Kick", "FM", "Round", "Taper", "Hard", "Fold", "Tonal",
-                                                    "Sine", "Saw", "Square", "Round Square", "Triangle" };
+                                                    "Sine", "Saw", "Square", "Round Square", "Triangle", "Wood" };
 /** Styles an extra Noise / Click layer can use: the core lists without "Sample"
     (an extra layer plays a sample through its Sample source instead). */
 inline const juce::StringArray layerNoiseStyleNames { "Wires", "White", "Pink", "Metallic", "Crackle" };
@@ -269,8 +270,8 @@ inline const juce::StringArray chainClipShapeNames { "Soft", "Hard", "Tube", "Ta
 inline int sampleStyleIndex (const juce::StringArray& names) { return names.size() - 1; }
 /** The reverb's engine: Classic (the original 8-line FDN; patches from before Cloud
     load on it) or Cloud (Ghost Note Audio's Cloud Seed, the default). */
-inline const juce::StringArray revEngineNames { "Classic", "Cloud" };
-inline constexpr int revEngineClassic = 0, revEngineCloud = 1;
+inline const juce::StringArray revEngineNames { "Classic", "Cloud", "Natural" };
+inline constexpr int revEngineClassic = 0, revEngineCloud = 1, revEngineNatural = 2;
 inline const juce::StringArray driveTypeNames { "Soft", "Hard", "Tube", "Fold", "Crush" };
 
 /** Level parameters bottom out at this value, which means silence. */
@@ -374,6 +375,7 @@ struct DrumParams
     int   clipMode      = 1;    // index into clipModeNames; 0 = off, clipModeComp = outComp
     float clipDriveDb   = 0.0f;
     float clipCeilingDb = 0.0f;
+    float masterOut     = 1.0f; // linear: the final volume, after the output stage
 
     struct Layer
     {
@@ -504,7 +506,7 @@ private:
           clickType, clickLevel, clickTone, clickLength,
           driveOn, driveType, driveAmount, driveMix,
           eqOn, eqStyle,
-          outGain, clip,
+          outGain, clip, masterOut,
           revOn, revMix, revSize, revDecay, revPreDelay, revLowCut, revHighCut, revGate, revGateTime, revGateFade,
           revEngine, revDiffusion, revModDepth, revModRate, revWidth, revEarly, revDamp,
           scTrigger, scThreshold, scRetrigger,

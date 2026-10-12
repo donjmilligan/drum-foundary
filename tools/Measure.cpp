@@ -27,6 +27,7 @@
 
 #include "Measure.h"
 #include "PluginProcessor.h"
+#include "dsp/FxChain.h"
 #include "dsp/OfflineRenderer.h"
 #include "presets/FactoryPresets.h"
 #include "ui/SpectrumAnalyzer.h"
@@ -1395,10 +1396,107 @@ int cmdMeasurePresets (const juce::StringArray& args)
     return failures == 0 ? 0 : 1;
 }
 
+//==============================================================================
+// emit-preset
+
+/** Prints saved .drumpreset files in the FactoryPresets.cpp format, so a sound saved
+    from the plug-in can become a factory preset. Each file is loaded the way the
+    plug-in loads it (old formats are migrated); every parameter that differs from its
+    default is listed (ids quoted: unquote the ones with a pid constant), then the core
+    curves, and the chain when it isn't the default. What a factory preset can't hold
+    (samples, an extra layer's own curves) is reported on stderr. */
+int cmdEmitPreset (const juce::StringArray& args)
+{
+    if (args.isEmpty())
+    {
+        std::fprintf (stderr, "usage: emit-preset <file.drumpreset>...\n");
+        return 1;
+    }
+
+    int failures = 0;
+    for (const auto& arg : args)
+    {
+        const auto file = juce::File::getCurrentWorkingDirectory().getChildFile (arg);
+        const auto xml = juce::parseXML (file);
+        if (xml == nullptr)
+        {
+            std::fprintf (stderr, "%s: not readable\n", file.getFullPathName().toRawUTF8());
+            ++failures;
+            continue;
+        }
+
+        DrumFoundryProcessor proc;
+        proc.loadStateTree (juce::ValueTree::fromXml (*xml));
+        const auto state = proc.createStateTree();
+        const auto name = file.getFileNameWithoutExtension();
+
+        juce::StringArray items;
+        for (auto* param : proc.getParameters())
+        {
+            auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param);
+            if (ranged == nullptr || sessionOnlyParameterIds().contains (ranged->paramID))
+                continue;
+            float v = ranged->convertFrom0to1 (ranged->getValue());
+            const float def = ranged->convertFrom0to1 (ranged->getDefaultValue());
+            if (std::abs (v - def) <= 1.0e-4f * juce::jmax (1.0f, std::abs (def)))
+                continue;
+
+            // Saved values carry float noise (900.0002): keep the fewest decimals that are within 0.02%.
+            for (int decimals = 0; decimals <= 4; ++decimals)
+            {
+                const float scale = std::pow (10.0f, (float) decimals);
+                const float r = std::round (v * scale) / scale;
+                if (std::abs (r - v) <= 2.0e-4f * juce::jmax (1.0f, std::abs (v)))
+                {
+                    v = r;
+                    break;
+                }
+            }
+            const bool isLevel = ranged->paramID.endsWith ("Level");
+            items.add ("{ \"" + ranged->paramID + "\", " + (isLevel && v <= kMinLevelDb ? juce::String ("kMinLevelDb") : num (v)) + " }");
+        }
+
+        // The optional curves are positional: list up to the last one that isn't default.
+        juce::StringArray curves;
+        int lastCurve = 2;
+        for (int e = 3; e < numCoreEnvs; ++e)
+            if (! (proc.getEnvelope ((EnvId) e) == defaultEnvelope ((EnvId) e)))
+                lastCurve = e;
+        for (int e = 0; e <= lastCurve; ++e)
+        {
+            const auto env = proc.getEnvelope ((EnvId) e);
+            curves.add (e > 2 && env == defaultEnvelope ((EnvId) e) ? juce::String ("{}") : pointsCode (env.getPoints()));
+        }
+
+        const auto chain = state.getProperty (DrumFoundryProcessor::fxChainId).toString();
+        const bool customChain = chain.isNotEmpty() && chain != FxChain::defaults().toString();
+        if (customChain)
+            while (curves.size() < numCoreEnvs)
+                curves.add ("{}");
+
+        juce::String code = "        { \"" + name + "\",\n          { " + items.joinIntoString (", ") + " },\n";
+        for (int i = 0; i < curves.size(); ++i)
+            code += "          " + curves[i] + (i + 1 < curves.size() || customChain ? ",\n" : " },\n");
+        if (customChain)
+            code += "          \"" + chain + "\" },\n";
+        std::printf ("%s\n", code.toRawUTF8());
+
+        for (int e = numCoreEnvs; e < numEnvs; ++e)
+            if (! (proc.getEnvelope ((EnvId) e) == defaultEnvelope ((EnvId) e)))
+                std::fprintf (stderr, "%s: the %s curve isn't the default, and a factory preset can't hold it\n",
+                              name.toRawUTF8(), envelopeName ((EnvId) e));
+        if (const auto smp = state.getChildWithName ("SAMPLES"); smp.isValid() && smp.getNumChildren() > 0)
+            std::fprintf (stderr, "%s: uses samples, which a factory preset can't hold\n", name.toRawUTF8());
+    }
+    return failures == 0 ? 0 : 1;
+}
+
 } // namespace
 
 int run (const juce::String& command, const juce::StringArray& args)
 {
+    if (command == "emit-preset")
+        return cmdEmitPreset (args);
     return command == "measure-presets" ? cmdMeasurePresets (args) : cmdMeasure (args);
 }
 

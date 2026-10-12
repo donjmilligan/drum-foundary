@@ -215,13 +215,34 @@ juce::ValueTree PresetManager::buildFactoryState (int factoryIndex) const
         state.appendChild (child, nullptr);
     }
 
-    juce::ValueTree envs (DrumFoundryProcessor::envelopesId);
+    std::array<CurveEnvelope, numEnvs> curves;
     for (int e = 0; e < numEnvs; ++e)
     {
         const auto& pts = preset.points (e);
-        const auto env = pts.empty() ? defaultEnvelope ((EnvId) e) : CurveEnvelope (pts, envelopeRange (e));
-        envs.appendChild (env.toValueTree (DrumFoundryProcessor::envelopeTreeId (e)), nullptr);
+        curves[(size_t) e] = pts.empty() ? defaultEnvelope ((EnvId) e) : CurveEnvelope (pts, envelopeRange (e));
     }
+
+    // A factory preset can only couple an extra layer to a core layer's curve (Body, Noise or
+    // Click). Layers are grouped only when you group them, so each one loads on its own curves
+    // instead (Own), starting as copies of the curves it was coupled to: it sounds the same,
+    // and editing it leaves the core layer alone.
+    for (int k = 0; k < kNumExtraLayers; ++k)
+        for (const bool pitch : { true, false })
+        {
+            const auto id = layerParamId (k, pitch ? pid::layPitchEnv : pid::layEnv);
+            auto child = state.getChildWithProperty (paramId, id);
+            const int link = child.isValid() ? juce::roundToInt ((double) child.getProperty (paramValue)) : (int) layerEnvOwn;
+            const int coupled = pitch ? layerPitchEnvelope (k, link) : layerLevelEnvelope (k, link);
+            if (link == layerEnvOwn || link == layerEnvFlat || coupled < 0 || coupled >= numCoreEnvs)
+                continue;
+            const int own = pitch ? layerOwnPitchEnvelope (k) : layerOwnLevelEnvelope (k);
+            curves[(size_t) own] = CurveEnvelope (curves[(size_t) coupled].getPoints(), envelopeRange (own));
+            child.setProperty (paramValue, (double) layerEnvOwn, nullptr);
+        }
+
+    juce::ValueTree envs (DrumFoundryProcessor::envelopesId);
+    for (int e = 0; e < numEnvs; ++e)
+        envs.appendChild (curves[(size_t) e].toValueTree (DrumFoundryProcessor::envelopeTreeId (e)), nullptr);
     state.appendChild (envs, nullptr);
     return state;
 }
