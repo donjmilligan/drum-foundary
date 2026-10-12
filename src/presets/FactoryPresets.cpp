@@ -365,6 +365,68 @@ const std::vector<FactoryPreset>& factoryPresets()
           { { 0, 1, -0.5f }, { 0.08f, 0.18f, -0.3f }, { 0.2f, 0, 0 }, { 1, 0, 0 } },
           { { 0, 1, -0.5f }, { 0.1f, 0.55f, -0.35f }, { 0.5f, 0.06f, -0.2f }, { 0.65f, 0, 0 }, { 1, 0, 0 } } },
 
+        // FG Ghost Crush: a crushed ghost snare, matched to a recorded one. A Membrane head pitched 460 Hz falls
+        // to 390 Hz by 20 ms and on to 245 Hz by 28 ms, with wide wires, all pushed hard into the Hard clipper
+        // for ~30 ms; then it drops away into a thin wire tail and a short room gated at 250 ms.
+        { "FG Ghost Crush",
+          { { length, 300 }, { tune, 245 }, { bodyStyle, bodyMembrane }, { bodyLevel, -5.7f }, { bodyShape, 0.945f },
+            { otLevel, -8.98f }, { otRatio, 2.43f }, { modes, 0.986f }, { noiseStyle, noiseWires },
+            { noiseLevel, -5.72f }, { noiseHP, 473 }, { noiseLP, 16132 }, { noiseColor, 0.023f },
+            { noiseCouple, 0.018f }, { noiseWidth, 0.983f }, { noiseGrit, 0.007f }, { clickType, clickWood },
+            { clickLevel, 2.95f }, { clickTone, 5733 }, { clickLength, 2.49f }, { driveType, 0 },
+            { driveAmount, 0.945f }, { outLP, 6858 }, { outLPSlope, 1 }, { outGain, -12.77f }, { clip, 2 },
+            { clipDrive, 19.06f }, { clipCeiling, -6 }, { revMix, 0.044f }, { revSize, 0.271f }, { revDecay, 1183 },
+            { revPreDelay, 28.18f }, { revLowCut, 720 }, { revHighCut, 2695 }, { revGate, 1 },
+            { revGateTime, 252.09f }, { revGateFade, 10 } },
+          { { 0, 10.9f, 0 }, { 0.0667f, 8.05f, 0 }, { 0.0933f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.0832f, 0.9736f, -0.3f }, { 0.0919f, 0.0104f, -0.828f }, { 0.2352f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.0623f, 0.9879f, -0.3f }, { 0.0694f, 0.0133f, -0.712f }, { 0.6419f, 0, 0 }, { 1, 0, 0 } } },
+        // FG Ghost Drip: a short, dry ghost snare, matched to a recorded one. A Membrane head at 400 Hz (from
+        // 600 Hz) holds for ~50 ms under a band of white noise (1-3 kHz) and a second head 2.4 st below; a
+        // little Wood click lands at 40 ms for the drip. Length 51 ms cuts it all off. No clipper, no room.
+        { "FG Ghost Drip",
+          { { length, 51 }, { tune, 400 }, { bodyStyle, bodyMembrane }, { bodyLevel, 5.49f }, { bodyShape, 0.951f },
+            { otLevel, -8.22f }, { otRatio, 3.58f }, { modes, 0.378f }, { noiseStyle, noiseWhite },
+            { noiseLevel, -2.18f }, { noiseHP, 1082 }, { noiseLP, 3008 }, { noiseColor, 0.994f },
+            { noiseWidth, 0.923f }, { clickType, clickWood }, { clickLevel, 2.76f }, { clickTone, 1081 },
+            { clickLength, 1.78f }, { driveType, 4 }, { driveAmount, 0.043f }, { outGain, -17.22f }, { clip, 0 },
+            { "lay2On", 1 }, { "lay2Source", 4 }, { "lay2BodyStyle", 1 }, { "lay2Color", 0.652f },
+            { "lay2Level", -6.95f }, { "lay2Tune", -2.39f }, { "lay2Env", 0 }, { "lay2PitchEnv", 0 },
+            { "lay2Pan", 0.005f }, { "lay3On", 1 }, { "lay3Source", 3 }, { "lay3ClickType", 10 },
+            { "lay3Level", -18.02f }, { "lay3Env", 3 }, { "lay3PitchEnv", 3 }, { "lay3Delay", 39.85f },
+            { "lay3Pan", -0.162f }, { "lay3ClickTone", 1692 }, { "lay3ClickLength", 2.01f } },
+          { { 0, 7.223f, 0.093f }, { 0.2937f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, -0.584f }, { 0.3512f, 0.2881f, -0.3f }, { 0.786f, 0.0988f, -0.3f }, { 0.8256f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.4534f, 0.4762f, -0.3f }, { 0.995f, 0.904f, -0.269f }, { 0.997f, 0, 0 }, { 1, 0, 0 } } },
+        // FG Rim Ring: a future garage rim, matched to a recorded one. A Wood body at 438 Hz with a sine at
+        // 1049 Hz (Layer 1, on the Body curve) that rings flat-out for ~20 ms, then fades over ~200 ms;
+        // bright white noise (2.4-6.3 kHz) and the Wood click on top. Almost dry.
+        { "FG Rim Ring",
+          { { length, 450 }, { tune, 438 }, { bodyStyle, bodyWood }, { bodyLevel, -7.87f }, { bodyShape, 0.517f },
+            { otLevel, -5.79f }, { otRatio, 1.67f }, { modes, 0.771f }, { noiseStyle, noiseWhite },
+            { noiseLevel, -5.05f }, { noiseHP, 2382 }, { noiseLP, 6271 }, { noiseColor, 0.668f },
+            { noiseWidth, 0.004f }, { clickType, clickWood }, { clickLevel, -6.73f }, { clickTone, 1178 },
+            { clickLength, 7.53f }, { driveType, 1 }, { driveAmount, 0.007f }, { outGain, -4.8f }, { clip, 2 },
+            { clipDrive, 1.1f }, { revMix, 0.034f }, { revSize, 0.027f }, { revDecay, 1439 }, { revPreDelay, 5 },
+            { revLowCut, 166 }, { revHighCut, 2013 }, { revGate, 0 }, { "lay1On", 1 }, { "lay1Source", 1 },
+            { "lay1Level", -4.59f }, { "lay1Tune", 15.12f }, { "lay1Env", 0 }, { "lay1PitchEnv", 3 } },
+          { { 0, 5.043f, -0.882f }, { 0.024f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.04f, 0.7645f, -0.3f }, { 0.0597f, 0.1247f, -0.731f }, { 0.474f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.0219f, 0.4992f, -0.3f }, { 0.0979f, 0.1526f, -0.665f }, { 0.2601f, 0, 0 }, { 1, 0, 0 } } },
+        // FG Knock Room: FG Rim Ring 5 st lower (a 787 Hz ring over a 328 Hz Wood body) in a big, dark room.
+        { "FG Knock Room",
+          { { length, 450 }, { tune, 328 }, { bodyStyle, bodyWood }, { bodyLevel, -7.87f }, { bodyShape, 0.517f },
+            { otLevel, -5.79f }, { otRatio, 1.67f }, { modes, 0.771f }, { noiseStyle, noiseWhite },
+            { noiseLevel, -5.05f }, { noiseHP, 2382 }, { noiseLP, 6271 }, { noiseColor, 0.668f },
+            { noiseWidth, 0.004f }, { clickType, clickWood }, { clickLevel, -6.73f }, { clickTone, 883 },
+            { clickLength, 7.53f }, { driveType, 1 }, { driveAmount, 0.007f }, { outGain, -4.77f }, { clip, 2 },
+            { clipDrive, 1.1f }, { revMix, 0.4f }, { revSize, 0.75f }, { revDecay, 2200 }, { revPreDelay, 18 },
+            { revLowCut, 300 }, { revHighCut, 4500 }, { revGate, 0 }, { "lay1On", 1 }, { "lay1Source", 1 },
+            { "lay1Level", -4.59f }, { "lay1Tune", 15.12f }, { "lay1Env", 0 }, { "lay1PitchEnv", 3 } },
+          { { 0, 5.043f, -0.882f }, { 0.024f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.04f, 0.7645f, -0.3f }, { 0.0597f, 0.1247f, -0.731f }, { 0.474f, 0, 0 }, { 1, 0, 0 } },
+          { { 0, 1, 0 }, { 0.0219f, 0.4992f, -0.3f }, { 0.0979f, 0.1526f, -0.665f }, { 0.2601f, 0, 0 }, { 1, 0, 0 } } },
+
         // FG Wood Snare: a dry wooden snare, matched to a recorded one. The Wood body at 233 Hz drops 18 st
         // in ~20 ms; its wood modes (most of it, 400 Hz - 2 kHz, centred near 1 kHz) ring with the
         // fundamental for ~50 ms, under a Wood stick click and a thin band of wires. No room.
