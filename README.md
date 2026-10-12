@@ -4,6 +4,8 @@
 
 **Version 0.1.1**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
 
+**Mac and Windows installers links hosted by GitHub are in the installers/ directory.**
+
 **Watch the tutorial:** [Drum Foundry VST Demo (OPEN SOURCE Drum Synth)](https://www.youtube.com/watch?v=25Y4Oa3mcRc)
 
 [![Drum Foundry VST Demo (OPEN SOURCE Drum Synth) on YouTube](https://img.youtube.com/vi/25Y4Oa3mcRc/maxresdefault.jpg)](https://www.youtube.com/watch?v=25Y4Oa3mcRc)
