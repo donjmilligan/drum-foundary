@@ -8,6 +8,8 @@
 # Pushing a tag vX.Y.Z also publishes both installers as a GitHub pre-release.
 # To make a release:
 #   1. Bump the version in CMakeLists.txt: project(DrumFoundry VERSION X.Y.Z ...)
+#      and the "**Version X.Y.Z**" line at the top of README.md (the macOS job
+#      fails if they differ, so GitHub never shows a stale version).
 #   2. Commit and push that to main.
 #   3. git tag vX.Y.Z && git push origin vX.Y.Z
 # The release job fails if the tag doesn't match the CMake version.
@@ -154,6 +156,16 @@ jobs:
           fi
           echo "Version: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check README shows the same version
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if ! grep -qF "**Version $VERSION**" README.md; then
+            echo "::error file=README.md::README.md should show '**Version $VERSION**' (the version in CMakeLists.txt)."
+            exit 1
+          fi
 
       - name: Install Ninja
         shell: bash
