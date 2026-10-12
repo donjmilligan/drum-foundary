@@ -1,12 +1,15 @@
 # Builds Drum Foundry on Windows and macOS (universal) and packages each one
 # as an installer:
-#   - Windows: installers\Windows\DrumFoundry-<version>-Windows-Setup.exe (Inno Setup)
+#   - Windows: installers\Windows\DrumFoundry-<version>-Windows-Setup.exe (Inno Setup),
+#              plus DrumFoundry-<version>-Windows-VST3.zip (the bare VST3 bundle)
 #   - macOS:   installers/Mac/DrumFoundry-<version>-macOS.pkg (packaging/macos/make-pkg.sh)
 # Every run keeps the installers, plus the raw plug-ins and app for testing, as
 # downloadable artifacts on the run's page.
 #
-# Pushing a tag vX.Y.Z also publishes both installers as a GitHub release,
-# marked Latest so its version shows in the repository sidebar.
+# Pushing a tag vX.Y.Z also publishes the installers as a GitHub release,
+# marked Latest so its version shows in the repository sidebar. Installers are
+# never committed (installers/ is in .gitignore): CI and the Releases page are
+# where they live, so the repository's history doesn't grow by each build.
 # To make a release:
 #   1. Bump the version in CMakeLists.txt: project(DrumFoundry VERSION X.Y.Z ...)
 #      and the "**Version X.Y.Z**" line at the top of README.md (the macOS job
@@ -130,11 +133,24 @@ jobs:
           if (-not (Test-Path $setup)) { throw "Expected $setup, but it wasn't created" }
           Get-Item $setup | Format-List FullName, Length
 
+      # The bare VST3 bundle, zipped, for anyone who'd rather copy it into their
+      # VST3 folder than run the installer.
+      - name: Zip the VST3
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $zip = "installers\Windows\DrumFoundry-$env:VERSION-Windows-VST3.zip"
+          Compress-Archive -Path 'build\DrumFoundry_artefacts\Release\VST3\Drum Foundry.vst3' -DestinationPath $zip -Force
+          Get-Item $zip | Format-List FullName, Length
+
       - name: Upload installer
         uses: actions/upload-artifact@v7
         with:
           name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-installer
-          path: installers/Windows/DrumFoundry-${{ steps.version.outputs.version }}-Windows-Setup.exe
+          path: |
+            installers/Windows/DrumFoundry-${{ steps.version.outputs.version }}-Windows-Setup.exe
+            installers/Windows/DrumFoundry-${{ steps.version.outputs.version }}-Windows-VST3.zip
           if-no-files-found: error
 
   macos:
@@ -243,6 +259,7 @@ jobs:
         run: |
           files=(
             "installers/DrumFoundry-${VERSION}-Windows-Setup.exe"
+            "installers/DrumFoundry-${VERSION}-Windows-VST3.zip"
             "installers/DrumFoundry-${VERSION}-macOS.pkg"
           )
           for f in "${files[@]}"; do
