@@ -761,7 +761,7 @@ void EqGraph::paint (juce::Graphics& g)
             if (eqTypeHasSlope (b.type))
                 text << "  " << eqSlopeNames[b.slope] << "/oct";
             if (eqTypeHasQ (b.type))
-                text << "  Q " << juce::String (b.q, 2);
+                text << (eqTypeHasSlope (b.type) ? "  Resonance " : "  Q ") << juce::String (b.q, 2);
             if (b.dynamic && eqTypeHasGain (b.type))
                 text << "  dynamic, now " << formatDb (processor.getEqAppliedGainDb (show));
         }

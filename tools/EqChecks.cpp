@@ -55,7 +55,8 @@ namespace
 
     double db (double linear) { return 20.0 * std::log10 (std::max (1.0e-12, linear)); }
 
-    DrumParams::EqBand makeBand (int type, float freq, float gainDb, float q, int slope = 3)
+    /** A band; `slope` -1 is the type's usual one (12 dB/oct for a shelf, 24 for a cut). */
+    DrumParams::EqBand makeBand (int type, float freq, float gainDb, float q, int slope = -1)
     {
         DrumParams::EqBand b;
         b.on = true;
@@ -63,7 +64,7 @@ namespace
         b.freq = freq;
         b.gainDb = gainDb;
         b.q = q;
-        b.slope = slope;
+        b.slope = slope >= 0 ? slope : type == eqLowShelf || type == eqHighShelf ? kEqShelfSlope : 3;
         return b;
     }
 
@@ -335,6 +336,78 @@ int run()
             fail ("random EQ settings: " + juce::String (finite ? "finite" : "NOT finite") + ", peak " + juce::String (peak));
     }
 
+    // --- Shelf slopes: half the gain at the band's frequency at every slope, the plateau below,
+    //     and the steeper the slope, the nearer flat two octaves away ----------------------------
+    {
+        juce::String report;
+        double lastAway = 1.0e9;
+        for (int slope : { 0, 1, 3, 5 })
+            for (int type : { (int) eqLowShelf, (int) eqHighShelf })
+            {
+                const auto b = makeBand (type, 1000.0f, 12.0f, 0.7071f, slope);
+                const auto d = ParametricEq::design (b, eqStyleClean, 48000.0);
+                const bool low = type == eqLowShelf;
+                const double mid = db (d.magnitude (1000.0, 48000.0));
+                const double plateau = db (d.magnitude (low ? 30.0 : 15000.0, 48000.0));
+                const double away = db (d.magnitude (low ? 4000.0 : 250.0, 48000.0));
+                if (std::abs (mid - 6.0) > 0.35 || (slope > 0 && std::abs (plateau - 12.0) > 0.35))
+                    fail (eqTypeNames[type] + " " + eqSlopeNames[slope] + ": " + juce::String (mid, 2) + " dB at its frequency, "
+                          + juce::String (plateau, 2) + " dB on its plateau (want 6 and 12)");
+                if (low)
+                {
+                    if (! (away < lastAway))
+                        fail ("a steeper low shelf isn't nearer flat two octaves up (" + eqSlopeNames[slope] + ")");
+                    lastAway = away;
+                    report << eqSlopeNames[slope] << " " << juce::String (away, 2) << "  ";
+                }
+            }
+        std::printf ("eq shelves: +12 dB low shelf at 1 kHz, level two octaves up per slope: %s\n", report.toRawUTF8());
+    }
+
+    // --- Resonance is held: a cut peaks under +12 dB, a shelf overshoots by under half its gain,
+    //     and settings under the knee are left exactly as they were -----------------------------
+    {
+        const auto extremes = [] (const DrumParams::EqBand& b, int style)
+        {
+            const auto d = ParametricEq::design (b, style, 48000.0);
+            double hi = -1.0e9, lo = 1.0e9;
+            for (double hz = 20.0; hz < 20000.0; hz *= 1.003)
+            {
+                const double v = db (d.magnitude (hz, 48000.0));
+                hi = std::max (hi, v);
+                lo = std::min (lo, v);
+            }
+            return std::pair { hi, lo };
+        };
+        double worstCut = 0.0, worstShelf = 0.0;
+        for (int style = 0; style < numEqStyles; ++style)
+            for (float q : { 1.0f, 2.0f, 4.0f, 7.58f, 18.0f })
+            {
+                for (int slope : { 1, 3, 7 })
+                    for (int type : { (int) eqLowCut, (int) eqHighCut })
+                        worstCut = std::max (worstCut, extremes (makeBand (type, 1000.0f, 0.0f, q, slope), style).first);
+                for (int slope : { 0, 1, 3, 5 })
+                    for (int type : { (int) eqLowShelf, (int) eqHighShelf })
+                        for (float gain : { -24.0f, -6.0f, 6.0f, 24.0f })
+                        {
+                            const auto [hi, lo] = extremes (makeBand (type, 1000.0f, gain, q, slope), style);
+                            const double over = std::max (hi - std::max (0.0f, gain), std::min (0.0f, gain) - lo);
+                            worstShelf = std::max (worstShelf, over / std::abs (gain));
+                        }
+            }
+        std::printf ("eq resonance held: highest cut peak %.2f dB (cap 12); largest shelf overshoot %.2f of its gain (cap 0.5)\n",
+                     worstCut, worstShelf);
+        if (worstCut > 12.1 || worstShelf > 0.52)
+            fail ("resonance over its cap: a cut peaks at " + juce::String (worstCut, 2) + " dB, a shelf overshoots by "
+                  + juce::String (worstShelf, 2) + " of its gain");
+        if (extremes (makeBand (eqLowCut, 1000.0f, 0.0f, 18.0f, 3), eqStyleClean).first < 9.0)
+            fail ("a cut at Q 18 has lost its resonance");
+        // Under the knee nothing moved: a Q 1 cut peaks where a second-order Q 1 low pass does.
+        const double q1 = extremes (makeBand (eqHighCut, 1000.0f, 0.0f, 1.0f, 1), eqStyleClean).first;
+        if (std::abs (q1 - 20.0 * std::log10 (1.0 / std::sqrt (1.0 - 0.25))) > 0.05)
+            fail ("a Q 1 cut's peak moved: " + juce::String (q1, 3) + " dB");
+    }
+
     // --- Old patches load on Digital (their old curves); new ones on Clean ------------------------
     {
         DrumFoundryProcessor proc;
@@ -360,9 +433,32 @@ int run()
         again.loadStateTree (loaded.createStateTree());
         if (juce::roundToInt (again.getState().getRawParameterValue (pid::eqStyle)->load()) != eqStyleNames.size() - 1)
             fail ("a format 5 patch's EQ Style didn't survive a round trip");
+
+        // Format 1-8 shelves were 12 dB/oct whatever their Slope said; cuts keep theirs.
+        auto old8 = proc.createStateTree();
+        old8.setProperty (DrumFoundryProcessor::formatVersionId, 8, nullptr);
+        const auto setRaw = [&old8] (int band, const char* suffix, double v)
+        {
+            for (int i = 0; i < old8.getNumChildren(); ++i)
+                if (old8.getChild (i).getProperty ("id").toString() == eqBandParamId (band, suffix))
+                    old8.getChild (i).setProperty ("value", v, nullptr);
+        };
+        setRaw (0, pid::eqBandSlope, 3);
+        setRaw (3, pid::eqBandType, eqHighShelf);
+        setRaw (3, pid::eqBandSlope, 5);
+        setRaw (4, pid::eqBandType, eqLowCut);
+        setRaw (4, pid::eqBandSlope, 5);
+        DrumFoundryProcessor loaded8;
+        loaded8.loadStateTree (old8);
+        const auto p8 = loaded8.readParams();
+        if (p8.eqBands[0].slope != kEqShelfSlope || p8.eqBands[3].slope != kEqShelfSlope || p8.eqBands[4].slope != 5)
+            fail ("a format 8 patch's shelves aren't 12 dB/oct (or its cut lost its slope): " + juce::String (p8.eqBands[0].slope)
+                  + ", " + juce::String (p8.eqBands[3].slope) + ", " + juce::String (p8.eqBands[4].slope));
+        if (DrumParams().eqBands[0].slope != kEqShelfSlope || DrumParams().eqBands[2].slope != kEqShelfSlope)
+            fail ("the default shelves aren't 12 dB/oct");
     }
 
-    std::printf ("eq: shapes, Digital = old EQ, slopes, processing, styles, dynamic, listen, off, random settings, old patches %s\n",
+    std::printf ("eq: shapes, Digital = old EQ, slopes, shelf slopes, resonance caps, processing, styles, dynamic, listen, off, random settings, old patches %s\n",
                  failures == 0 ? "ok" : "FAILED");
     return failures + runEditor();
 }

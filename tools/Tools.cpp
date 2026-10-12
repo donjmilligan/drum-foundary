@@ -6668,6 +6668,157 @@ int checkEditorControls()
     it surviving the editor closing and a session round trip. */
 /** The display's ALL: with it on, the other playing layers' curves are clickable and a
     click on one shows that layer; with it off, the same clicks change nothing. */
+/** Every choice drop-down shows its parameter's choice, through preset loads in a row (the
+    Body selector once showed Taper for 808 Kick's 808: its grouped list was matched by
+    position), and picking an item sets that item's choice. */
+int checkChoiceSelectors()
+{
+    int failures = 0, checked = 0;
+    DrumFoundryProcessor proc;
+    proc.prepareToPlay (48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> editor (proc.createEditor());
+    std::vector<ui::ChoiceSelector*> selectors;
+    std::function<void (juce::Component&)> collect = [&] (juce::Component& c)
+    {
+        if (auto* sel = dynamic_cast<ui::ChoiceSelector*> (&c))
+            selectors.push_back (sel);
+        for (auto* child : c.getChildren())
+            collect (*child);
+    };
+    collect (*editor);
+
+    const auto verify = [&] (const juce::String& when)
+    {
+        for (auto* sel : selectors)
+        {
+            auto* param = sel->getParameter();
+            const auto& box = sel->getComboBox();
+            if (param == nullptr || box.getNumItems() == 0)
+                continue;
+            ++checked;
+            const auto want = param->getCurrentChoiceName();
+            const bool listed = box.indexOfItemId (param->getIndex() + 1) >= 0;
+            if (listed && box.getText() != want)
+            {
+                std::printf ("FAIL: choice selectors: %s shows %s, not %s (%s)\n", param->paramID.toRawUTF8(),
+                             box.getText().toRawUTF8(), want.toRawUTF8(), when.toRawUTF8());
+                ++failures;
+            }
+        }
+    };
+
+    auto& presets = proc.getPresets();
+    juce::StringArray order { "Tapered Kick", "808 Kick", "Psy Kick", "909 Kick", "FM Snare", "DnB Snare", "Init" };
+    for (const auto& name : order)
+        for (int i = 0; i < (int) presets.getEntries().size(); ++i)
+            if (presets.getEntries()[(size_t) i].name == name)
+            {
+                presets.load (i);
+                verify ("after loading " + name);
+            }
+
+    // Picking each listed item sets exactly that choice.
+    for (auto* sel : selectors)
+    {
+        auto* param = sel->getParameter();
+        auto& box = sel->getComboBox();
+        if (param == nullptr)
+            continue;
+        for (int k = 0; k < box.getNumItems(); ++k)
+        {
+            const int id = box.getItemId (k);
+            box.setSelectedId (id, juce::sendNotificationSync);
+            if (param->getIndex() != id - 1)
+            {
+                std::printf ("FAIL: choice selectors: picking %s in %s set %s\n", box.getItemText (k).toRawUTF8(),
+                             param->paramID.toRawUTF8(), param->getCurrentChoiceName().toRawUTF8());
+                ++failures;
+                break;
+            }
+        }
+    }
+    if (failures == 0)
+        std::printf ("choice selectors: %zu drop-downs show their parameter through preset loads (%d checks), and picking sets it\n",
+                     selectors.size(), checked);
+    return failures;
+}
+
+/** Every factory preset loads with exactly the values it lists (a choice, such as Body
+    Style, to the entry; a number to within its range's rounding). */
+int checkPresetValues()
+{
+    int failures = 0, checked = 0;
+    DrumFoundryProcessor proc;
+    proc.prepareToPlay (48000.0, 512);
+    auto& presets = proc.getPresets();
+    const auto& factory = factoryPresets();
+    for (int i = 0; i < (int) presets.getEntries().size(); ++i)
+    {
+        const auto& entry = presets.getEntries()[(size_t) i];
+        const FactoryPreset* def = nullptr;
+        for (const auto& f : factory)
+            if (entry.name == f.name)
+                def = &f;
+        if (def == nullptr)
+            continue;
+        presets.load (i);
+        for (const auto& [id, want] : def->values)
+        {
+            auto* param = dynamic_cast<juce::RangedAudioParameter*> (proc.getState().getParameter (id));
+            if (param == nullptr)
+            {
+                std::printf ("FAIL: preset values: %s lists %s, which isn't a parameter\n", def->name, id);
+                ++failures;
+                continue;
+            }
+            const float got = proc.getState().getRawParameterValue (id)->load();
+            const auto& range = param->getNormalisableRange();
+            const float expected = range.snapToLegalValue (want);
+            const bool choice = dynamic_cast<juce::AudioParameterChoice*> (param) != nullptr
+                             || dynamic_cast<juce::AudioParameterBool*> (param) != nullptr;
+            const float tolerance = choice ? 0.0f : 1.0e-3f * std::max (1.0f, std::abs (expected));
+            ++checked;
+            if (std::abs (got - expected) > tolerance)
+            {
+                std::printf ("FAIL: preset values: %s loads %s = %s, not the %s it lists\n", def->name, id,
+                             param->getText (param->convertTo0to1 (got), 32).toRawUTF8(),
+                             param->getText (param->convertTo0to1 (expected), 32).toRawUTF8());
+                ++failures;
+            }
+        }
+    }
+    if (failures == 0)
+        std::printf ("preset values: every factory preset loads the %d values it lists\n", checked);
+    return failures;
+}
+
+/** Each envelope curve, pitch and level alike, is drawn in its layer's colour: Body cyan,
+    Noise pink, Click yellow, the extra layers green. (Body pitch was once drawn orange.) */
+int checkChartColours()
+{
+    int failures = 0;
+    const std::pair<EnvId, juce::Colour> expected[] {
+        { envPitch, ui::colours::body },        { envBody, ui::colours::body },
+        { envNoise, ui::colours::noise },       { envNoisePitch, ui::colours::noise },
+        { envClickPitch, ui::colours::click },  { envClick, ui::colours::click },
+        { envLayer1Pitch, ui::colours::layer }, { envLayer1Level, ui::colours::layer },
+        { envLayer2Pitch, ui::colours::layer }, { envLayer2Level, ui::colours::layer },
+        { envLayer3Pitch, ui::colours::layer }, { envLayer3Level, ui::colours::layer },
+    };
+    static_assert (std::size (expected) == (size_t) numEnvs, "a new envelope needs its layer colour here");
+    for (const auto& [env, colour] : expected)
+        if (ui::colours::forEnvelope (env) != colour)
+        {
+            std::printf ("FAIL: chart colours: envelope %d is drawn in %s, not its layer's %s\n", (int) env,
+                         ui::colours::forEnvelope (env).toDisplayString (false).toRawUTF8(),
+                         colour.toDisplayString (false).toRawUTF8());
+            ++failures;
+        }
+    if (failures == 0)
+        std::printf ("chart colours: every pitch and level curve is its layer's colour\n");
+    return failures;
+}
+
 int checkChartAll()
 {
     int failures = 0;
@@ -8621,6 +8772,9 @@ int cmdCheck()
     failures += checkEditor();
     failures += checkEditorControls();
     failures += checkEditorChart();
+    failures += checkChartColours();
+    failures += checkPresetValues();
+    failures += checkChoiceSelectors();
     failures += checkChartAll();
     failures += checkLfos();
     failures += checkUndo();

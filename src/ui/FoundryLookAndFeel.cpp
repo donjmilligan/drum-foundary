@@ -10,10 +10,10 @@ namespace drum::ui
 
 juce::Colour colours::forEnvelope (int envIndex)
 {
-    // Body pitch keeps the pitch orange; every other curve takes its layer's colour.
+    // Every curve, pitch or level, takes its layer's colour (checked by `check`: chart colours).
     switch (envIndex)
     {
-        case 0:  return pitch;  // envPitch
+        case 0:                 // envPitch
         case 1:  return body;   // envBody
         case 4:                 // envClickPitch
         case 5:  return click;  // envClick

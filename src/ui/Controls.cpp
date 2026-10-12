@@ -332,7 +332,16 @@ ChoiceSelector::ChoiceSelector (APVTS& state, const juce::String& paramId, const
     box.setTooltip (param->getName (64));
     addAndMakeVisible (box);
 
-    attachment = std::make_unique<APVTS::ComboBoxAttachment> (state, paramId, box);
+    attachment = std::make_unique<juce::ParameterAttachment> (*param, [this] (float index)
+    {
+        box.setSelectedId (juce::roundToInt (index) + 1, juce::dontSendNotification);
+    }, state.undoManager);
+    box.onChange = [this]
+    {
+        if (const int id = box.getSelectedId(); id > 0 && id - 1 != choiceParam->getIndex())
+            attachment->setValueAsCompleteGesture ((float) (id - 1));
+    };
+    attachment->sendInitialUpdate();
 }
 
 void ChoiceSelector::setItemGroups (const std::vector<std::pair<juce::String, std::vector<int>>>& groups)
