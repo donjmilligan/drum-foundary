@@ -11,7 +11,7 @@ A kick and snare synthesizer plugin in the spirit of drum synths like Sonic Acad
 - **Body**: the tonal drum head. It follows the drawn **pitch** curve and **body** level curve. The style menu is grouped into **Kick** (Kick and the kick bodies), **Snare** (Classic, Membrane, Wood), **Kick or Snare** (808, 909, FM), **Basic** waveforms, and Sample. Pick a style:
   - **Classic**: sine, then triangle, then square, with an overtone and head modes.
   - **Membrane**: a modal snare or tom head.
-  - **Wood**: a wooden shell and head. A resonator at the fundamental and eight damped wood modes (measured from wood snares, 1.6 to 5.8 times the fundamental), struck by a stick with a little grain. **Hardness** shortens the strike and brightens it, **Knock** sets the wood modes' level, **Spread** stretches them, and **Damping** goes from ringing to a dead, dry knock. Presets: FG Wood Snare and FG Wood Crack.
+  - **Wood**: a wooden shell and head. A resonator at the fundamental and eight damped wood modes (measured from wood snares, 1.6 to 5.8 times the fundamental), struck by a stick with a little grain. **Hardness** shortens the strike and brightens it, **Knock** sets the wood modes' level, **Spread** stretches them, and **Damping** goes from ringing to a dead, dry knock. Presets: FG Wood Snare, FG Wood Crack, FG Rim Ring and FG Knock Room.
   - **808** and **909**: analog-style snare and kick circuits.
   - **Kick**: a sine sweep with a saturation that fades out.
   - **FM**: two-operator FM.
