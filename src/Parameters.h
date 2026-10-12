@@ -194,6 +194,8 @@ juce::String eqBandParamId (int band, const char* suffix);
 
 inline const juce::StringArray eqTypeNames  { "Bell", "Low Shelf", "High Shelf", "Low Cut", "High Cut", "Notch", "Band Pass", "Tilt" };
 inline const juce::StringArray eqSlopeNames { "6 dB", "12 dB", "18 dB", "24 dB", "36 dB", "48 dB", "72 dB", "96 dB" };
+/** The eqSlopeNames index a shelf starts at: 12 dB/oct (what every shelf was before Slope). */
+inline constexpr int kEqShelfSlope = 1;
 /** Clean: analog-matched curves. Digital: bilinear (the old EQ). British: bells narrow
     as they boost or cut. Pultec: resonant shelves, broad bells. See ParametricEq.h. */
 inline const juce::StringArray eqStyleNames { "Clean", "Digital", "British", "Pultec" };
@@ -352,9 +354,9 @@ struct DrumParams
     std::array<EqBand, kNumEqBands> eqBands = []
     {
         std::array<EqBand, kNumEqBands> b {};
-        b[0] = { true, 1, 100.0f, 0.0f, 0.70710678f };
+        b[0] = { true, 1, 100.0f, 0.0f, 0.70710678f, kEqShelfSlope };
         b[1] = { true, 0, 900.0f, 0.0f, 0.9f };
-        b[2] = { true, 2, 7000.0f, 0.0f, 0.70710678f };
+        b[2] = { true, 2, 7000.0f, 0.0f, 0.70710678f, kEqShelfSlope };
         return b;
     }();
     /** The EQ overlay's Listen: > 0 replaces the EQ's output with a band pass of its input

@@ -41,11 +41,14 @@ inline constexpr bool eqTypeHasGain (int type) noexcept
     return type == eqBell || type == eqLowShelf || type == eqHighShelf || type == eqTilt;
 }
 
-/** True for the types whose Slope does something (the cuts). */
-inline constexpr bool eqTypeHasSlope (int type) noexcept { return type == eqLowCut || type == eqHighCut; }
+/** True for the types whose Slope does something (the cuts and the shelves). */
+inline constexpr bool eqTypeHasSlope (int type) noexcept
+{
+    return type == eqLowCut || type == eqHighCut || type == eqLowShelf || type == eqHighShelf;
+}
 
-/** True for the types whose Q does something (all but Tilt). On a cut it's the
-    resonance at the corner (0.71 = none). */
+/** True for the types whose Q does something (all but Tilt). On a cut or a shelf it's
+    the resonance at the corner (0.71 = none; under it, a softer knee). */
 inline constexpr bool eqTypeHasQ (int type) noexcept { return type != eqTilt; }
 
 /** Filter order for each eqSlopeNames entry (6 dB/oct per order). */
@@ -90,7 +93,10 @@ struct EqDesign
     (Q x 2) and widens the bells (Q x 0.6).
 
     Cuts are Butterworth (6 to 96 dB/oct); their Q, above 0.71, adds a resonant
-    peak at the corner. Tilt is a first-order tilt around its frequency: Gain is the
+    peak at the corner, held under +12 dB (it bends from +6 dB). Shelves are 12 dB/oct
+    cookbook shelves, or Butterworth shelves of their Slope's order; their Q, above
+    0.71, adds a bump past the shelf and a dip before it, held under half the shelf's
+    gain (it bends from a quarter). Tilt is a first-order tilt around its frequency: Gain is the
     difference between the top and the bottom (half of it each way).
 
     A dynamic band (bell, shelf or tilt) only reaches its Gain while the band is

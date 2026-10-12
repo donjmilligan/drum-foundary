@@ -35,6 +35,96 @@ namespace
         void add (const Proto& x) noexcept { if (count < EqDesign::kMaxSections) p[(size_t) count++] = x; }
     };
 
+    constexpr double kButterworthQ = 0.70710678;
+
+    /** Bends `x` (dB) towards `cap` from `cap / 2` up; below that it's left as it is. */
+    double softCap (double x, double cap) noexcept
+    {
+        const double knee = 0.5 * cap;
+        return x <= knee ? x : knee + knee * std::tanh ((x - knee) / knee);
+    }
+
+    /** A cut's Q with its resonant peak held under +12 dB. The peak is a second-order low
+        pass's at that Q (the sharpest section of any slope peaks within 0.1 dB of it); up to
+        +6 dB the Q is left exactly as it is. */
+    double cappedCutQ (double q) noexcept
+    {
+        constexpr double capDb = 12.0;
+        if (q <= kButterworthQ)
+            return q;
+        const double peak = q / std::sqrt (1.0 - 1.0 / (4.0 * q * q));
+        const double peakDb = 20.0 * std::log10 (peak);
+        if (peakDb <= 0.5 * capDb)
+            return q;
+        const double p = std::pow (10.0, softCap (peakDb, capDb) / 20.0);
+        return std::sqrt (0.5 * (p * p + p * std::sqrt (p * p - 1.0))); // the Q that peaks at p
+    }
+
+    /** How far (dB) a second-order shelf at `gainDb` and Q `q` overshoots past its two
+        plateaus: the bump on one side and the dip on the other. |H|^2 is a ratio of two
+        quadratics in x = (f / fc)^2, so its turning points are a quadratic's roots. */
+    double shelfOvershootDb (double q, double gainDb) noexcept
+    {
+        const double G = std::pow (10.0, gainDb / 20.0);
+        const double a = std::sqrt (G), c = 1.0 / a;          // zeros^2, poles^2 (a low shelf)
+        const double p = a / (q * q) - 2.0 * a, r = c / (q * q) - 2.0 * c;
+        const auto levelDb = [&] (double x)
+        {
+            return 10.0 * std::log10 ((x * x + p * x + a * a) / (x * x + r * x + c * c));
+        };
+        const double qa = r - p, qb = 2.0 * (c * c - a * a), qc = p * c * c - a * a * r;
+        const double lo = std::min (0.0, gainDb), hi = std::max (0.0, gainDb);
+        double over = 0.0;
+        const auto consider = [&] (double x)
+        {
+            if (x > 0.0 && std::isfinite (x))
+            {
+                const double d = levelDb (x);
+                over = std::max ({ over, d - hi, lo - d });
+            }
+        };
+        if (std::abs (qa) < 1.0e-12)
+            consider (-qc / qb);
+        else if (const double disc = qb * qb - 4.0 * qa * qc; disc >= 0.0)
+        {
+            consider ((-qb + std::sqrt (disc)) / (2.0 * qa));
+            consider ((-qb - std::sqrt (disc)) / (2.0 * qa));
+        }
+        return over;
+    }
+
+    /** A shelf's Q with its overshoot held under half its gain. Up to a quarter of the
+        gain the Q is left exactly as it is (the slope barely changes it). */
+    double cappedShelfQ (double q, double gainDb) noexcept
+    {
+        const double cap = 0.5 * std::abs (gainDb);
+        if (q <= kButterworthQ || cap <= 0.0)
+            return q;
+        const double over = shelfOvershootDb (q, gainDb);
+        if (over <= 0.5 * cap)
+            return q;
+        const double target = softCap (over, cap);
+        double below = kButterworthQ, above = q; // the overshoot grows with Q
+        for (int i = 0; i < 40; ++i)
+        {
+            const double mid = std::sqrt (below * above);
+            (shelfOvershootDb (mid, gainDb) < target ? below : above) = mid;
+        }
+        return below;
+    }
+
+    /** The Butterworth angles' section Qs for an order, sharpest last (as the cuts use them). */
+    template <typename Fn>
+    void butterworthPairs (int order, Fn&& fn)
+    {
+        const int pairs = order / 2;
+        for (int k = 1; k <= pairs; ++k)
+        {
+            const double angle = order % 2 == 1 ? kPi * k / order : kPi * (2 * k - 1) / (2.0 * order);
+            fn (1.0 / (2.0 * std::cos (angle)), k == pairs);
+        }
+    }
+
     double clampFreq (double hz, double sampleRate) noexcept
     {
         return juce::jlimit (10.0, sampleRate * 0.49, std::isfinite (hz) ? hz : 1000.0);
@@ -61,8 +151,40 @@ namespace
         switch (type)
         {
             case eqBell:      out.add ({ 1.0, A / q, 1.0, 1.0, 1.0 / (A * q), 1.0 }); break;
-            case eqLowShelf:  out.add ({ A * A, A * sa / q, A, 1.0, sa / q, A }); break;
-            case eqHighShelf: out.add ({ A, A * sa / q, A * A, A, sa / q, 1.0 }); break;
+            case eqLowShelf:
+            case eqHighShelf:
+            {
+                // Q above 0.71 is the resonance: a bump past the shelf and a dip before it,
+                // held under half the shelf's gain.
+                q = cappedShelfQ (q, g);
+                const int order = eqSlopeOrder (band.slope);
+                if (order == 2) // 12 dB/oct: the cookbook shelf (the old EQ's, exactly)
+                {
+                    if (type == eqLowShelf)
+                        out.add ({ A * A, A * sa / q, A, 1.0, sa / q, A });
+                    else
+                        out.add ({ A, A * sa / q, A * A, A, sa / q, 1.0 });
+                    break;
+                }
+                // Steeper (or 6 dB/oct): a Butterworth shelf of the slope's order (Holters and
+                // Zölzer), half the gain at the band's frequency like the 12 dB one; its zeros
+                // sit G^(1/2M) above the poles' radius and the poles as far below. Resonance
+                // lifts the sharpest pair, as on the cuts.
+                const double G = A * A;
+                const bool low = type == eqLowShelf;
+                const double z = std::pow (G, (low ? 0.5 : -0.5) / order), pole = 1.0 / z;
+                const double k1 = low ? 1.0 : std::pow (G, 1.0 / order); // a high shelf's gain, spread over the sections
+                const double resonance = q / kButterworthQ;
+                if (order % 2 == 1)
+                    out.add ({ k1 * z, k1, 0.0, pole, 1.0, 0.0 });
+                butterworthPairs (order, [&] (double qk, bool sharpest)
+                {
+                    if (sharpest)
+                        qk *= resonance;
+                    out.add ({ k1 * k1 * z * z, k1 * k1 * z / qk, k1 * k1, pole * pole, pole / qk, 1.0 });
+                });
+                break;
+            }
             case eqNotch:     out.add ({ 1.0, 0.0, 1.0, 1.0, 1.0 / q, 1.0 }); break;
             case eqBandPass:  out.add ({ 0.0, 1.0 / q, 0.0, 1.0, 1.0 / q, 1.0 }); break;
             case eqTilt:      out.add ({ 1.0, A, 0.0, A, 1.0, 0.0 }); break; // (A s + 1) / (s + A): 1/A at the bottom, A at the top
@@ -72,7 +194,7 @@ namespace
                 // Butterworth of the slope's order; Q above 0.71 lifts the sharpest section.
                 const bool high = type == eqLowCut;
                 const int order = eqSlopeOrder (band.slope);
-                const double resonance = q / 0.70710678;
+                const double resonance = cappedCutQ (q) / 0.70710678;
                 if (order % 2 == 1)
                     out.add (high ? Proto { 0.0, 1.0, 0.0, 1.0, 1.0, 0.0 } : Proto { 1.0, 0.0, 0.0, 1.0, 1.0, 0.0 });
                 const int pairs = order / 2;

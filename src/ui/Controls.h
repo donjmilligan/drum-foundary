@@ -100,6 +100,7 @@ public:
     void resized() override;
 
     juce::ComboBox& getComboBox() noexcept { return box; }
+    juce::AudioParameterChoice* getParameter() const noexcept { return choiceParam; }
 
     /** Lists the choices in groups, each under a heading (an empty heading: just a
         separator), in the order given. Choice values (and the ids) don't change, so
@@ -109,7 +110,9 @@ public:
 private:
     juce::ComboBox box;
     juce::AudioParameterChoice* choiceParam = nullptr;
-    std::unique_ptr<APVTS::ComboBoxAttachment> attachment;
+    // By item id (choice index + 1), not by position: JUCE's ComboBoxAttachment goes by
+    // position, which picks the wrong choice once setItemGroups() reorders the list.
+    std::unique_ptr<juce::ParameterAttachment> attachment;
     juce::String caption;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChoiceSelector)

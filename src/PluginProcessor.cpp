@@ -643,6 +643,33 @@ void DrumFoundryProcessor::loadStateTree (const juce::ValueTree& tree, bool reus
         engineChild.setProperty (paramValueId, (double) revEngineClassic, nullptr);
         copy.appendChild (engineChild, nullptr);
     }
+
+    // Format 1-8 shelves were all 12 dB/oct (their Slope did nothing, and was 24 dB).
+    if ((int) copy.getProperty (formatVersionId, 1) < 9)
+    {
+        const auto findParam = [&copy] (const juce::String& id)
+        {
+            for (int i = 0; i < copy.getNumChildren(); ++i)
+                if (copy.getChild (i).hasType (paramTypeId) && copy.getChild (i).getProperty (paramIdId).toString() == id)
+                    return copy.getChild (i);
+            return juce::ValueTree();
+        };
+        for (int b = 0; b < kNumEqBands; ++b)
+        {
+            const auto type = findParam (eqBandParamId (b, pid::eqBandType));
+            const int t = type.isValid() ? juce::roundToInt ((double) type.getProperty (paramValueId)) : -1;
+            if (t != eqLowShelf && t != eqHighShelf)
+                continue;
+            auto slope = findParam (eqBandParamId (b, pid::eqBandSlope));
+            if (! slope.isValid())
+            {
+                slope = juce::ValueTree (paramTypeId);
+                slope.setProperty (paramIdId, eqBandParamId (b, pid::eqBandSlope), nullptr);
+                copy.appendChild (slope, nullptr);
+            }
+            slope.setProperty (paramValueId, (double) kEqShelfSlope, nullptr);
+        }
+    }
     copy.setProperty (formatVersionId, stateFormatVersion, nullptr);
 
     sanitiseParameterValues (copy, apvts);

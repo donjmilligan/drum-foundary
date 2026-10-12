@@ -222,7 +222,7 @@ public:
         (Sine .. Triangle) before Sample (Sample was at 11). Format 8: the reverb has an
         engine, Cloud by default; older patches load on Classic, the reverb they had. */
     static const juce::Identifier formatVersionId;
-    static constexpr int stateFormatVersion = 8;
+    static constexpr int stateFormatVersion = 9;
     /** The master chain's order, on the state tree (see setFxChain()). */
     static const juce::Identifier fxChainId;
     static juce::Identifier envelopeTreeId (int envIndex);

@@ -210,7 +210,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
             l.add (std::make_unique<Float> (juce::ParameterID { id (pid::eqBandFreq), 1 }, name ("Freq"), range (20.0f, 20000.0f, 630.0f), freq, hzAttrs()));
             l.add (std::make_unique<Float> (juce::ParameterID { id (pid::eqBandGain), 1 }, name ("Gain"), range (-24.0f, 24.0f), 0.0f, dbAttrs()));
             l.add (std::make_unique<Float> (juce::ParameterID { id (pid::eqBandQ), 1 }, name ("Q"), range (0.1f, 18.0f, 1.0f), b < 3 ? d.q : 1.0f, qAttrs));
-            l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id (pid::eqBandSlope), 1 }, name ("Slope"), eqSlopeNames, 3));
+            l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id (pid::eqBandSlope), 1 }, name ("Slope"), eqSlopeNames, b < 3 ? d.slope : 3));
             l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id (pid::eqBandDyn), 1 }, name ("Dynamic"), false));
             l.add (std::make_unique<Float> (juce::ParameterID { id (pid::eqBandThresh), 1 }, name ("Threshold"), range (-60.0f, 0.0f), -24.0f, dbAttrs()));
             l.add (std::make_unique<Float> (juce::ParameterID { id (pid::eqBandAttack), 1 }, name ("Attack"), range (0.1f, 100.0f, 10.0f), 5.0f, msAttrs()));
