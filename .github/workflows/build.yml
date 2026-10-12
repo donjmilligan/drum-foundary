@@ -5,7 +5,8 @@
 # Every run keeps the installers, plus the raw plug-ins and app for testing, as
 # downloadable artifacts on the run's page.
 #
-# Pushing a tag vX.Y.Z also publishes both installers as a GitHub pre-release.
+# Pushing a tag vX.Y.Z also publishes both installers as a GitHub release,
+# marked Latest so its version shows in the repository sidebar.
 # To make a release:
 #   1. Bump the version in CMakeLists.txt: project(DrumFoundry VERSION X.Y.Z ...)
 #      and the "**Version X.Y.Z**" line at the top of README.md (the macOS job
@@ -234,7 +235,7 @@ jobs:
           path: installers
           merge-multiple: true
 
-      - name: Create GitHub pre-release
+      - name: Create GitHub release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -257,6 +258,5 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --title "Drum Foundry ${VERSION}" \
-              --generate-notes \
-              --prerelease
+              --generate-notes
           fi

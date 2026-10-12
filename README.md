@@ -1,6 +1,10 @@
 # Drum Foundry VST
 
+[![Latest release](https://img.shields.io/github/v/release/donjmilligan/drum-foundary?include_prereleases&label=version)](https://github.com/donjmilligan/drum-foundary/releases/latest)
+
 **Version 0.1.0**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
+
+![Drum Foundry playing the DnB Neuro Snare preset: the Body, Noise and Click layers, the level curve drawn over the waveform, and the EQ, spectrum and output sections](assets/drum-foundry-screenshot.png)
 
 A kick and snare synthesizer plugin in the spirit of drum synths like Sonic Academy's Kick 3, Plugin Boutique's BigKick, D16 Group's Punchbox and Sonic Charge's Microtonic (see [Trademarks](#trademarks)). You draw the pitch and amplitude envelopes directly over the rendered waveform, and build the sound from layers. Each layer can be synthesized or play a sample you import.
 
@@ -82,7 +86,7 @@ If Windows says **Windows protected your PC**, click **More info**, then **Run a
 
 *Making the installers yourself:* on a Mac, `packaging/macos/make-pkg.sh` builds a universal Release and writes the .pkg to `installers/Mac/`. It's unsigned unless you set the Developer ID variables described at the top of the script. The Windows installer is built on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3 or later, after a Release build into `build\` (see [Build](#build)): run `ISCC /DAppVersion=0.1.0 packaging\windows\DrumFoundry.iss`, using the version from `CMakeLists.txt` (without it the installer is labelled 0.0.0). The installer goes to `installers\Windows\`. Installers for the current version are also kept in the repository, in `installers/Mac/` and `installers/Windows/`.
 
-*For developers:* a release is made by pushing a tag `vX.Y.Z` that matches the version in `CMakeLists.txt` (`project(DrumFoundry VERSION X.Y.Z ...)`) and the **Version X.Y.Z** line at the top of this README (CI fails if the README line doesn't match). The GitHub Actions workflow then builds both installers and attaches them to a new pre-release.
+*For developers:* a release is made by pushing a tag `vX.Y.Z` that matches the version in `CMakeLists.txt` (`project(DrumFoundry VERSION X.Y.Z ...)`) and the **Version X.Y.Z** line at the top of this README (CI fails if the README line doesn't match). The GitHub Actions workflow then builds both installers and attaches them to a new release.
 
 ## Build
 
