@@ -1,7 +1,7 @@
 # Builds Drum Foundry on Windows and macOS (universal) and packages each one
 # as an installer:
-#   - Windows: dist\DrumFoundry-<version>-Windows-Setup.exe (Inno Setup)
-#   - macOS:   dist/DrumFoundry-<version>-macOS.pkg (packaging/macos/make-pkg.sh)
+#   - Windows: installers\Windows\DrumFoundry-<version>-Windows-Setup.exe (Inno Setup)
+#   - macOS:   installers/Mac/DrumFoundry-<version>-macOS.pkg (packaging/macos/make-pkg.sh)
 # Every run keeps the installers, plus the raw plug-ins and app for testing, as
 # downloadable artifacts on the run's page.
 #
@@ -123,7 +123,7 @@ jobs:
           $buildDir = Join-Path $env:GITHUB_WORKSPACE 'build\DrumFoundry_artefacts\Release'
           & $env:ISCC "/DAppVersion=$env:VERSION" "/DBuildDir=$buildDir" 'packaging\windows\DrumFoundry.iss'
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
-          $setup = "dist\DrumFoundry-$env:VERSION-Windows-Setup.exe"
+          $setup = "installers\Windows\DrumFoundry-$env:VERSION-Windows-Setup.exe"
           if (-not (Test-Path $setup)) { throw "Expected $setup, but it wasn't created" }
           Get-Item $setup | Format-List FullName, Length
 
@@ -131,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-installer
-          path: dist/DrumFoundry-${{ steps.version.outputs.version }}-Windows-Setup.exe
+          path: installers/Windows/DrumFoundry-${{ steps.version.outputs.version }}-Windows-Setup.exe
           if-no-files-found: error
 
   macos:
@@ -160,7 +160,7 @@ jobs:
         run: brew install ninja
 
       # make-pkg.sh configures and builds a universal Release into build-release/
-      # and writes dist/DrumFoundry-<version>-macOS.pkg.
+      # and writes installers/Mac/DrumFoundry-<version>-macOS.pkg.
       # Signing and notarisation: the script signs when DEVELOPER_ID_APPLICATION,
       # DEVELOPER_ID_INSTALLER and NOTARY_PROFILE are set. They're unset here, so
       # the .pkg is unsigned. Turning that on needs the Developer ID certificates
@@ -174,7 +174,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: DrumFoundry-${{ steps.version.outputs.version }}-macOS-installer
-          path: dist/DrumFoundry-${{ steps.version.outputs.version }}-macOS.pkg
+          path: installers/Mac/DrumFoundry-${{ steps.version.outputs.version }}-macOS.pkg
           if-no-files-found: error
 
       # For testing only: artifacts are zipped, which drops the executable bit
@@ -219,7 +219,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: DrumFoundry-*-installer
-          path: dist
+          path: installers
           merge-multiple: true
 
       - name: Create GitHub pre-release
@@ -229,11 +229,11 @@ jobs:
           VERSION: ${{ needs.windows.outputs.version }}
         run: |
           files=(
-            "dist/DrumFoundry-${VERSION}-Windows-Setup.exe"
-            "dist/DrumFoundry-${VERSION}-macOS.pkg"
+            "installers/DrumFoundry-${VERSION}-Windows-Setup.exe"
+            "installers/DrumFoundry-${VERSION}-macOS.pkg"
           )
           for f in "${files[@]}"; do
-            [ -f "$f" ] || { echo "::error::Missing $f"; ls -la dist; exit 1; }
+            [ -f "$f" ] || { echo "::error::Missing $f"; ls -la installers; exit 1; }
           done
 
           # Re-running the job for a tag that already has a release replaces

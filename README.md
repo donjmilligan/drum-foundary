@@ -57,7 +57,7 @@ The installers aren't signed with an Apple or Microsoft certificate, so both sys
 
 ### macOS
 
-Download `DrumFoundry-<version>-macOS.pkg`. It's one installer for Apple Silicon and Intel Macs, and it installs:
+Download `DrumFoundry-<version>-macOS.pkg`. It's one installer for Apple Silicon and Intel Macs running macOS 11 (Big Sur) or later, and it installs:
 
 - the VST3, `Drum Foundry.vst3`, into `/Library/Audio/Plug-Ins/VST3`
 - the AU, `Drum Foundry.component`, into `/Library/Audio/Plug-Ins/Components`
@@ -79,6 +79,8 @@ Download `DrumFoundry-<version>-Windows-Setup.exe` (64-bit Windows 10 or 11) and
 - the licence texts into the `Licenses` folder there
 
 If Windows says **Windows protected your PC**, click **More info**, then **Run anyway**. After installing, open your DAW and rescan plug-ins. To uninstall, go to **Settings ▸ Apps**, find Drum Foundry and click **Uninstall**.
+
+*Making the installers yourself:* on a Mac, `packaging/macos/make-pkg.sh` builds a universal Release and writes the .pkg to `installers/Mac/`. It's unsigned unless you set the Developer ID variables described at the top of the script. The Windows installer is built on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3 or later, after a Release build into `build\` (see [Build](#build)): run `ISCC /DAppVersion=0.1.0 packaging\windows\DrumFoundry.iss`, using the version from `CMakeLists.txt` (without it the installer is labelled 0.0.0). The installer goes to `installers\Windows\`. Installers for the current version are also kept in the repository, in `installers/Mac/` and `installers/Windows/`.
 
 *For developers:* a release is made by pushing a tag `vX.Y.Z` that matches the version in `CMakeLists.txt` (`project(DrumFoundry VERSION X.Y.Z ...)`). The GitHub Actions workflow then builds both installers and attaches them to a new pre-release.
 
