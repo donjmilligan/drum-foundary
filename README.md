@@ -56,13 +56,18 @@ It builds as VST3, AU and Standalone on macOS, and as VST3 and Standalone on Win
 
 ## Download
 
-Ready-made installers for macOS and Windows go on the [Releases page](https://github.com/donjmilligan/drum-foundary/releases) when a release is made. If there isn't one there yet, [build it yourself](#build). Open the newest release and, under **Assets**, download the file for your system.
+Download the newest version for your system:
+
+- **macOS:** [DrumFoundry-macOS.pkg](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-macOS.pkg)
+- **Windows:** [DrumFoundry-Windows-Setup.exe](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Windows-Setup.exe), or just the plug-in as [DrumFoundry-Windows-VST3.zip](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Windows-VST3.zip)
+
+The same links are in [`installers/`](installers/README.md), and every version is on the [Releases page](https://github.com/donjmilligan/drum-foundary/releases).
 
 The installers aren't signed with an Apple or Microsoft certificate, so both systems warn you the first time. The steps below get past that.
 
 ### macOS
 
-Download `DrumFoundry-<version>-macOS.pkg`. It's one installer for Apple Silicon and Intel Macs running macOS 11 (Big Sur) or later, and it installs:
+Download `DrumFoundry-macOS.pkg` (on the Releases page it's `DrumFoundry-<version>-macOS.pkg`). It's one installer for Apple Silicon and Intel Macs running macOS 11 (Big Sur) or later, and it installs:
 
 - the VST3, `Drum Foundry.vst3`, into `/Library/Audio/Plug-Ins/VST3`
 - the AU, `Drum Foundry.component`, into `/Library/Audio/Plug-Ins/Components`
@@ -77,7 +82,7 @@ After installing, open your DAW and rescan plug-ins. Drum Foundry is an instrume
 
 ### Windows
 
-Download `DrumFoundry-<version>-Windows-Setup.exe` (64-bit Windows 10 or 11) and run it. It installs:
+Download `DrumFoundry-Windows-Setup.exe` (on the Releases page it's `DrumFoundry-<version>-Windows-Setup.exe`; 64-bit Windows 10 or 11) and run it. It installs:
 
 - the VST3, `Drum Foundry.vst3`, into `C:\Program Files\Common Files\VST3`
 - the standalone app into `C:\Program Files\Drum Foundry`, with a Start-menu shortcut
@@ -85,9 +90,9 @@ Download `DrumFoundry-<version>-Windows-Setup.exe` (64-bit Windows 10 or 11) and
 
 If Windows says **Windows protected your PC**, click **More info**, then **Run anyway**. After installing, open your DAW and rescan plug-ins. To uninstall, go to **Settings ▸ Apps**, find Drum Foundry and click **Uninstall**.
 
-*Making the installers yourself:* on a Mac, `packaging/macos/make-pkg.sh` builds a universal Release and writes the .pkg to `installers/Mac/`. It's unsigned unless you set the Developer ID variables described at the top of the script. The Windows installer is built on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3 or later, after a Release build into `build\` (see [Build](#build)): run `ISCC /DAppVersion=0.1.1 packaging\windows\DrumFoundry.iss`, using the version from `CMakeLists.txt` (without it the installer is labelled 0.0.0). The installer goes to `installers\Windows\`. `installers/` isn't kept in the repository: every CI run keeps the installers (and a zip of the bare Windows VST3) as downloadable artifacts, and each release attaches them on the Releases page.
+*Making the installers yourself:* on a Mac, `packaging/macos/make-pkg.sh` builds a universal Release and writes the .pkg to `installers/Mac/`. It's unsigned unless you set the Developer ID variables described at the top of the script. The Windows installer is built on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3 or later, after a Release build into `build\` (see [Build](#build)): run `ISCC /DAppVersion=0.1.1 packaging\windows\DrumFoundry.iss`, using the version from `CMakeLists.txt` (without it the installer is labelled 0.0.0). The installer goes to `installers\Windows\`. The installer files themselves are never committed (only `installers/README.md` is): every CI run keeps the installers (and a zip of the bare Windows VST3) as downloadable artifacts, and each release attaches them on the Releases page.
 
-*For developers:* a release is made by pushing a tag `vX.Y.Z` that matches the version in `CMakeLists.txt` (`project(DrumFoundry VERSION X.Y.Z ...)`) and the **Version X.Y.Z** line at the top of this README (CI fails if the README line doesn't match). The GitHub Actions workflow then builds both installers, plus the Windows VST3 zip, and attaches them to a new release.
+*For developers:* a release is made by pushing a tag `vX.Y.Z` that matches the version in `CMakeLists.txt` (`project(DrumFoundry VERSION X.Y.Z ...)`) and the **Version X.Y.Z** line at the top of this README (CI fails if the README line doesn't match). The GitHub Actions workflow then builds both installers, plus the Windows VST3 zip, and attaches them to a new release, each under its versioned name and again under a name without the version (`DrumFoundry-macOS.pkg` and so on) so the download links above always fetch the newest release.
 
 ## Build
 
