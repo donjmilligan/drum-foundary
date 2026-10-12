@@ -9,13 +9,14 @@
 namespace drum::measure
 {
 
-/** Handles the "measure" and "measure-presets" commands of the dev tool.
+/** Handles the "measure", "measure-presets" and "emit-preset" commands of the dev tool.
     `args` is everything after the command name. Returns the process exit code.
 
       measure <file-or-dir>... [--list paths.txt] [--csv out.csv]
       measure-presets [kick|snare|all] [--preset name]... [--set id=value]...
                       [--overrides file] [--csv out.csv] [--wav dir] [--emit]
       measure-presets also reports the spectrum analyzer's PEAK readout (HIT and LIVE).
+      emit-preset <file.drumpreset>...   saved presets in the FactoryPresets.cpp format
 */
 int run (const juce::String& command, const juce::StringArray& args);
 

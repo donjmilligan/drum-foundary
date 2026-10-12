@@ -37,7 +37,7 @@ namespace
     {
         std::vector<std::pair<juce::String, std::vector<int>>> g {
             { "Kick",          { bodyKick, bodyRound, bodyTaper, bodyHard, bodyFold, bodyTonal } },
-            { "Snare",         { bodyClassic, bodyMembrane } },
+            { "Snare",         { bodyClassic, bodyMembrane, bodyWood } },
             { "Kick or Snare", { body808, body909, bodyFM } },
             { "Basic",         { bodySine, bodySaw, bodySquare, bodyRoundSquare, bodyTriangle } } };
         if (withSample)
@@ -934,6 +934,8 @@ int LayersSection::addLayer (int source)
     firstUpdate = true;
     update();
     selectExtraLayer (k);
+    if (onLayerTouched)
+        onLayerTouched (selected, true); // the display shows the new layer's curves
 
     if (source == sourceSample && onBrowse)
         onBrowse ((SampleSlot) (slotLayer1 + k));
@@ -959,6 +961,8 @@ void LayersSection::removeLayer (int index)
         while (tab >= firstExtraTab && ! isPresent (tab - firstExtraTab))
             --tab;
         selected = tab;
+        if (onLayerTouched)
+            onLayerTouched (selected, true);
     }
     refresh();
 }

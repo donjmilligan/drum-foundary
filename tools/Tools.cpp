@@ -5094,8 +5094,37 @@ int checkReverbEngines()
     dry.revMix = 0.0f;
     const auto dryHit = renderHit (dry, tables, sr);
 
-    float levels[2] {};
-    for (int engine : { (int) revEngineClassic, (int) revEngineCloud })
+    // How much the tail rings: its spectrum's peaks over a third-octave average (dB, the
+    // 95th percentile over 200 Hz - 6 kHz). Recirculating delays ring at their modes, a
+    // metallic sound; a room of noise shouldn't.
+    const auto ringing = [sr] (const std::vector<float>& wet)
+    {
+        constexpr int order = 15, size = 1 << order;
+        juce::dsp::FFT fft (order);
+        std::vector<float> data ((size_t) (2 * size), 0.0f);
+        for (int i = 0; i < size && i < (int) wet.size(); ++i)
+            data[(size_t) i] = wet[(size_t) i] * (0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / (float) size));
+        fft.performFrequencyOnlyForwardTransform (data.data());
+        const auto bin = [sr] (double hz) { return (int) (hz * size / sr); };
+        std::vector<double> db ((size_t) (size / 2));
+        for (int k = 1; k < size / 2; ++k)
+            db[(size_t) k] = 20.0 * std::log10 (data[(size_t) k] + 1.0e-12);
+        std::vector<double> over;
+        for (int k = bin (200.0); k < bin (6000.0); ++k)
+        {
+            const int lo = juce::jmax (1, (int) (k / 1.12)), hi = juce::jmin (size / 2 - 1, (int) (k * 1.12));
+            double avg = 0.0;
+            for (int j = lo; j <= hi; ++j)
+                avg += db[(size_t) j];
+            over.push_back (db[(size_t) k] - avg / (hi - lo + 1));
+        }
+        std::sort (over.begin(), over.end());
+        return over.empty() ? 0.0 : over[(size_t) (0.95 * (double) (over.size() - 1))];
+    };
+
+    float levels[3] {};
+    double rings[3] {};
+    for (int engine : { (int) revEngineClassic, (int) revEngineCloud, (int) revEngineNatural })
     {
         auto p = base;
         p.revEngine = engine;
@@ -5116,13 +5145,16 @@ int checkReverbEngines()
         // The wet part: the render minus the dry one, 300 ms to 1 s (the tail, past the hit).
         const int from = (int) (0.3 * sr), to = juce::jmin (a.getNumSamples(), dryHit.getNumSamples() + (int) (2.0 * sr), (int) (1.0 * sr));
         double e = 0.0;
+        std::vector<float> wet;
         for (int i = from; i < to; ++i)
         {
             const float d = i < dryHit.getNumSamples() ? dryHit.getSample (0, i) : 0.0f;
             const float w = a.getSample (0, i) - d;
             e += (double) w * w;
+            wet.push_back (w);
         }
         levels[engine] = (float) (10.0 * std::log10 (e / juce::jmax (1, to - from) + 1.0e-20));
+        rings[engine] = ringing (wet);
 
         // RT60: the wet level 0.4 s apart, early in the tail.
         const auto windowDb = [&] (double t0)
@@ -5135,9 +5167,10 @@ int checkReverbEngines()
         };
         const double slope = (windowDb (0.4) - windowDb (0.8)) / 0.4; // dB per second
         const double rt60 = slope > 0.0 ? 60.0 / slope : 0.0;
-        if (engine == revEngineCloud && (rt60 < 1.2 || rt60 > 1.8))
-            fail ("Cloud reverb: Decay 1.5 s measures an RT60 of " + juce::String (rt60, 2) + " s");
-        std::printf ("reverb %s: tail level %.1f dB, RT60 %.2f s (Decay 1.5 s), repeatable\n", name.toRawUTF8(), (double) levels[engine], rt60);
+        if (engine != revEngineClassic && (rt60 < 1.2 || rt60 > 1.8))
+            fail (name + " reverb: Decay 1.5 s measures an RT60 of " + juce::String (rt60, 2) + " s");
+        std::printf ("reverb %s: tail level %.1f dB, RT60 %.2f s (Decay 1.5 s), ringing %.1f dB, repeatable\n", name.toRawUTF8(),
+                     (double) levels[engine], rt60, rings[engine]);
 
         // Block sizes.
         p.lengthMs = 400.0f;
@@ -5150,8 +5183,36 @@ int checkReverbEngines()
         if (maxDiff > 1.0e-4f)
             fail (name + " reverb depends on the block size (max diff " + juce::String (maxDiff) + ")");
     }
-    if (std::abs (levels[0] - levels[1]) > 3.0f)
-        fail ("Cloud and Classic tails differ by " + juce::String (levels[1] - levels[0], 1) + " dB in level");
+    for (int engine : { (int) revEngineCloud, (int) revEngineNatural })
+        if (std::abs (levels[engine] - levels[revEngineClassic]) > 3.0f)
+            fail (revEngineNames[engine] + " and Classic tails differ by " + juce::String (levels[engine] - levels[revEngineClassic], 1) + " dB in level");
+    if (! (rings[revEngineNatural] < juce::jmin (rings[revEngineClassic], rings[revEngineCloud])))
+        fail ("the Natural reverb rings as much as the others (" + juce::String (rings[revEngineNatural], 1) + " dB)");
+
+    // Where ringing is worst: a small, short room (the DnB presets' kind), 30-330 ms.
+    {
+        double small[3] {};
+        auto room = base;
+        room.revSize = 0.25f;
+        room.revDecayMs = 600.0f;
+        room.lengthMs = 60.0f;
+        auto roomDry = room;
+        roomDry.revMix = 0.0f;
+        const auto roomDryHit = renderHit (roomDry, tables, sr);
+        for (int engine : { (int) revEngineClassic, (int) revEngineCloud, (int) revEngineNatural })
+        {
+            room.revEngine = engine;
+            const auto hit = renderHit (room, tables, sr);
+            std::vector<float> wet;
+            for (int i = (int) (0.03 * sr); i < juce::jmin (hit.getNumSamples(), (int) (0.33 * sr)); ++i)
+                wet.push_back (hit.getSample (0, i) - (i < roomDryHit.getNumSamples() ? roomDryHit.getSample (0, i) : 0.0f));
+            small[engine] = ringing (wet);
+        }
+        std::printf ("reverb ringing, small room (Size 25%%, Decay 600 ms): Classic %.1f dB, Cloud %.1f dB, Natural %.1f dB\n",
+                     small[0], small[1], small[2]);
+        if (! (small[revEngineNatural] < juce::jmin (small[revEngineClassic], small[revEngineCloud])))
+            fail ("the Natural reverb rings as much as the others in a small room (" + juce::String (small[revEngineNatural], 1) + " dB)");
+    }
 
     // Old patches load on Classic; new ones (and factory presets) on Cloud.
     {
@@ -5165,6 +5226,61 @@ int checkReverbEngines()
         if (old != revEngineClassic || now != revEngineCloud)
             fail ("reverb engine migration: format 7 -> " + juce::String (old) + ", new -> " + juce::String (now));
     }
+    return failures;
+}
+
+/** The plug-in's Natural reverb builds its rooms on a background thread: a room arrives,
+    the tail is there, and a new Decay builds a new room. */
+int checkNaturalLive()
+{
+    int failures = 0;
+    auto fail = [&] (const juce::String& msg) { std::printf ("FAIL: Natural reverb, live: %s\n", msg.toRawUTF8()); ++failures; };
+    constexpr double sr = 48000.0;
+    constexpr int block = 512;
+
+    DrumFoundryProcessor proc;
+    proc.prepareToPlay (sr, block);
+    setParam (proc, pid::revOn, 1.0f);
+    setParam (proc, pid::revEngine, (float) revEngineNatural);
+    setParam (proc, pid::revMix, 0.5f);
+    setParam (proc, pid::revGate, 0.0f);
+    setParam (proc, pid::length, 120.0f);
+
+    juce::AudioBuffer<float> buf (2, block);
+    juce::MidiBuffer midi;
+    // Tail energy (from..to seconds after a hit), after giving the room time to arrive.
+    const auto tailDb = [&] (double from = 0.3, double to = 0.8)
+    {
+        for (int i = 0; i < 50; ++i) // ~0.5 s of blocks, with the room thread running
+        {
+            proc.processBlock (buf, midi);
+            juce::Thread::sleep (10);
+        }
+        proc.triggerAudition (0.9f);
+        double e = 0.0;
+        for (int b = 0; b * block < (int) (to * sr); ++b)
+        {
+            proc.processBlock (buf, midi);
+            if (b * block >= (int) (from * sr))
+                for (int i = 0; i < block; ++i)
+                    e += (double) buf.getSample (0, i) * buf.getSample (0, i);
+        }
+        return 10.0 * std::log10 (e + 1.0e-20);
+    };
+
+    setParam (proc, pid::revDecay, 400.0f);
+    const double shortRoom = tailDb();
+    setParam (proc, pid::revDecay, 2500.0f);
+    const double longRoom = tailDb();
+    if (! (longRoom > -80.0))
+        fail ("no tail (" + juce::String (longRoom, 1) + " dB)");
+    if (! (shortRoom > -120.0))
+        fail ("the first hit after a new room has no tail (" + juce::String (shortRoom, 1) + " dB)");
+    if (! (longRoom > shortRoom + 10.0))
+        fail ("Decay 2.5 s isn't a longer room than 0.4 s (" + juce::String (longRoom, 1) + " vs " + juce::String (shortRoom, 1) + " dB)");
+    if (failures == 0)
+        std::printf ("Natural reverb, live: rooms built off the audio thread; tail 300-800 ms at Decay 0.4 s %.1f dB, 2.5 s %.1f dB\n",
+                     shortRoom, longRoom);
     return failures;
 }
 
@@ -6755,6 +6871,8 @@ int checkPresetValues()
     for (int i = 0; i < (int) presets.getEntries().size(); ++i)
     {
         const auto& entry = presets.getEntries()[(size_t) i];
+        if (! entry.isFactory) // a user preset can share a factory preset's name and differ
+            continue;
         const FactoryPreset* def = nullptr;
         for (const auto& f : factory)
             if (entry.name == f.name)
@@ -6773,7 +6891,12 @@ int checkPresetValues()
             }
             const float got = proc.getState().getRawParameterValue (id)->load();
             const auto& range = param->getNormalisableRange();
-            const float expected = range.snapToLegalValue (want);
+            float expected = range.snapToLegalValue (want);
+            // An extra layer coupled to a core layer's curve loads on its own copy of it.
+            const juce::String idText (id);
+            if (idText.startsWith ("lay") && (idText.endsWith (pid::layEnv) || idText.endsWith (pid::layPitchEnv))
+                && juce::roundToInt (expected) >= layerEnvBody && juce::roundToInt (expected) <= layerEnvClick)
+                expected = (float) layerEnvOwn;
             const bool choice = dynamic_cast<juce::AudioParameterChoice*> (param) != nullptr
                              || dynamic_cast<juce::AudioParameterBool*> (param) != nullptr;
             const float tolerance = choice ? 0.0f : 1.0e-3f * std::max (1.0f, std::abs (expected));
@@ -6812,6 +6935,15 @@ int checkChartColours()
             std::printf ("FAIL: chart colours: envelope %d is drawn in %s, not its layer's %s\n", (int) env,
                          ui::colours::forEnvelope (env).toDisplayString (false).toRawUTF8(),
                          colour.toDisplayString (false).toRawUTF8());
+            ++failures;
+        }
+    // The display draws the selected layer's curve in that layer's colour, grouped or not.
+    const juce::Colour layerColours[] { ui::colours::body, ui::colours::noise, ui::colours::click,
+                                        ui::colours::layer, ui::colours::layer, ui::colours::layer };
+    for (int l = 0; l < (int) std::size (layerColours); ++l)
+        if (ui::colours::forLayer (l) != layerColours[l])
+        {
+            std::printf ("FAIL: chart colours: chart layer %d is drawn in %s\n", l, ui::colours::forLayer (l).toDisplayString (false).toRawUTF8());
             ++failures;
         }
     if (failures == 0)
@@ -8778,6 +8910,7 @@ int cmdCheck()
     failures += checkChartAll();
     failures += checkLfos();
     failures += checkUndo();
+    failures += checkNaturalLive();
 
     std::printf (failures == 0 ? "all checks passed\n" : "%d check(s) failed\n", failures);
     return failures == 0 ? 0 : 1;
@@ -8812,7 +8945,7 @@ int main (int argc, char** argv)
                             argc > 4 ? juce::String (argv[4]).getIntValue() : 520,
                             argc > 5 ? juce::String (argv[5]).getIntValue() : 240);
 
-    if (cmd == "measure" || cmd == "measure-presets")
+    if (cmd == "measure" || cmd == "measure-presets" || cmd == "emit-preset")
         return drum::measure::run (cmd, juce::StringArray (argv + 2, argc - 2));
     if (cmd == "check-eq")
         return drum::eqchecks::run() == 0 ? 0 : 1;
@@ -8835,6 +8968,6 @@ int main (int argc, char** argv)
     if (cmd == "samples-ui")
         return cmdSamplesUi (cwd.getChildFile (argc > 2 ? argv[2] : "shots"));
 
-    std::printf ("usage: drumfoundry-tools render <dir> [float] | snapshot <png> [preset] [scale] [tab] [param=value | browser | browse=<slot> | samples | layer=<n> | hit]... | bench | check | analyzer <dir> [preset] [w] [h] | check-samples | check-clipper | samples-ui [dir] | styles <dir> | measure <files> | measure-presets [kick|snare|all]\n");
+    std::printf ("usage: drumfoundry-tools render <dir> [float] | snapshot <png> [preset] [scale] [tab] [param=value | browser | browse=<slot> | samples | layer=<n> | hit]... | bench | check | analyzer <dir> [preset] [w] [h] | check-samples | check-clipper | samples-ui [dir] | styles <dir> | measure <files> | measure-presets [kick|snare|all] | emit-preset <files>\n");
     return 1;
 }

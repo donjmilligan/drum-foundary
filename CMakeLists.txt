@@ -71,6 +71,7 @@ target_sources(DrumFoundryCode INTERFACE
     src/dsp/DrumEngine.cpp
     src/dsp/MasterChain.cpp
     src/dsp/CloudReverb.cpp
+    src/dsp/NaturalReverb.cpp
     libs/CloudSeedCore/DSP/Biquad.cpp
     libs/CloudSeedCore/DSP/RandomBuffer.cpp
     src/dsp/ParametricEq.cpp

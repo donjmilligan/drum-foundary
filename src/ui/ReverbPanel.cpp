@@ -360,7 +360,8 @@ ReverbOverlay::ReverbOverlay (DrumFoundryProcessor& p)
       engine (p.getState(), pid::revEngine, {}, colours::reverb), response (p)
 {
     engine.getComboBox().setTooltip ("Engine:\nCloud: Ghost Note Audio's Cloud Seed algorithm (MIT): diffuse, modulated, wide\n"
-                                     "Classic: the original 8-line reverb (sessions from before Cloud use it)");
+                                     "Classic: the original 8-line reverb (sessions from before Cloud use it)\n"
+                                     "Natural: a room built from shaped noise and convolved: organic, no metallic ring, best for small rooms");
     closeButton.setTooltip ("Back to the main view (Esc)");
     closeButton.onClick = [this] { if (onClose) onClose(); };
 
@@ -383,19 +384,20 @@ ReverbOverlay::ReverbOverlay (DrumFoundryProcessor& p)
 
     size.getSlider().setTooltip ("Size: how big the space is (the delay lines' length)");
     decay.getSlider().setTooltip ("Decay: how long the tail takes to fall 60 dB (RT60). The dashed line on the graph is what it asks for");
-    diffusion.getSlider().setTooltip ("Diffusion (Cloud): how quickly echoes blur into a smooth wash");
-    damping.getSlider().setTooltip ("Damping (Cloud): highs die faster than lows, like a real room");
+    diffusion.getSlider().setTooltip ("Diffusion (Cloud, Natural): how quickly echoes blur into a smooth wash");
+    damping.getSlider().setTooltip ("Damping (Cloud, Natural): highs die faster than lows, like a real room");
     depth.getSlider().setTooltip ("Mod Depth (Cloud): slow movement in the delays, for a lush, unmetallic tail");
     rate.getSlider().setTooltip ("Mod Rate (Cloud): how fast that movement is");
-    width.getSlider().setTooltip ("Width (Cloud): from mono to fully decorrelated left and right");
-    early.getSlider().setTooltip ("Early (Cloud): the diffused early sound's level next to the tail");
+    width.getSlider().setTooltip ("Width (Cloud, Natural): from mono to fully decorrelated left and right");
+    early.getSlider().setTooltip ("Early (Cloud, Natural): the early reflections' level next to the tail");
 
     groups = { { "SPACE", { &size, &decay, &pre, &diffusion }, {} },
                { "TONE", { &lowCut, &highCut, &damping }, {} },
                { "MOTION & WIDTH", { &depth, &rate, &width, &early }, {} },
                { "GATE", { gateSwitch.get(), &gateTime, &gateFade }, {} },
                { "MIX", { &mix }, {} } };
-    cloudOnly = { &diffusion, &damping, &depth, &rate, &width, &early };
+    cloudOnly = { &depth, &rate };
+    notClassic = { &diffusion, &damping, &width, &early };
 
     for (auto* c : std::initializer_list<juce::Component*> { &power, &engine, &closeButton, &response })
         addAndMakeVisible (c);
@@ -437,6 +439,8 @@ void ReverbOverlay::timerCallback()
         lastEngine = e;
         for (auto* c : cloudOnly)
             c->setAlpha (e == revEngineCloud ? 1.0f : 0.35f);
+        for (auto* c : notClassic)
+            c->setAlpha (e != revEngineClassic ? 1.0f : 0.35f);
         repaint();
     }
 }
@@ -466,6 +470,11 @@ void ReverbOverlay::paint (juce::Graphics& g)
         g.setFont (uiFont (10.5f));
         g.drawText ("Cloud Seed algorithm " + midDot + " Ghost Note Audio " + midDot + " MIT License", creditArea,
                     juce::Justification::centredLeft);
+    }
+    else if (lastEngine == revEngineNatural)
+    {
+        g.setFont (uiFont (10.5f));
+        g.drawText ("A room of shaped noise " + midDot + " convolved", creditArea, juce::Justification::centredLeft);
     }
 
     for (const auto& grp : groups)

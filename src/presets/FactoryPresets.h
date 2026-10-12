@@ -25,9 +25,9 @@ struct FactoryPreset
         parameter a preset doesn't list takes its default too, so a preset sets everything. */
     const char* chain = nullptr;
 
-    /** The points for envelope `env` (an EnvId); empty = its default. The extra
-        layers' own curves always take their defaults (factory layers are coupled to
-        the core layers' curves). */
+    /** The points for envelope `env` (an EnvId); empty = its default. A factory preset
+        has no curves for the extra layers: it couples them to a core layer's curves, and
+        they load on their own copies of those (see PresetManager::buildFactoryState()). */
     const std::vector<EnvPoint>& points (int env) const noexcept
     {
         static const std::vector<EnvPoint> none;

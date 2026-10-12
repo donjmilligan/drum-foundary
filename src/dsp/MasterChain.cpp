@@ -24,6 +24,7 @@ void MasterChain::prepare (double sr, int maxBlockSize)
         c.prepare (sr);
 
     outGain.reset (sr, 0.02);
+    masterOut.reset (sr, 0.02);
     revLevel.reset (sr, 0.02);
     dryL.assign ((size_t) maxBlockSize, 0.0f);
     dryR.assign ((size_t) maxBlockSize, 0.0f);
@@ -209,13 +210,14 @@ void MasterChain::process (juce::AudioBuffer<float>& buffer, int numSamples, con
     jassert (buffer.getNumChannels() >= 2);
 
     outGain.setTargetValue (p.outGain);
+    masterOut.setTargetValue (p.masterOut);
     revLevel.setTargetValue (p.revOn ? 1.0f : 0.0f);
 
     if (firstBlock)
     {
         // Start from the current settings rather than ramping up from zero.
         firstBlock = false;
-        for (auto* v : { &outGain, &revLevel })
+        for (auto* v : { &outGain, &masterOut, &revLevel })
             v->setCurrentAndTargetValue (v->getTargetValue());
         active = FxChain {};
         switchTo (p.chain);
@@ -304,6 +306,15 @@ void MasterChain::process (juce::AudioBuffer<float>& buffer, int numSamples, con
     oc.on = compStage;
     outComp.process (L, R, numSamples, oc);
     clipper.process (L, R, numSamples, compStage ? (int) Clipper::off : p.clipMode, p.clipDriveDb, p.clipCeilingDb);
+
+    // --- Master Out: the final volume, after the clipper (so it never changes how hard the
+    // stage is driven); above 0 dB it can take the output past the ceiling
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const float mo = masterOut.getNextValue();
+        L[i] *= mo;
+        R[i] *= mo;
+    }
 
     // --- The delay that stands in for modules not in the chain -----------------------
     const int mask = endDelaySize - 1;

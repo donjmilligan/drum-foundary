@@ -289,8 +289,9 @@ private:
 
     Top to bottom it follows the signal: the layers (Body, then a tabbed section
     with Noise, Click and the extra layers), the envelope display (with the layers'
-    timing lanes), then the effects and, at the bottom right, the output (spectrum +
-    output filter, gain and clipper). The browser opens as a drawer over the left of
+    timing lanes), then along the bottom, left to right: the effects, the spectrum, the
+    output (filter, gain and clipper) and Master (Velocity, KEY, CHOKE and the final
+    Out), with an arrow over each gap. The browser opens as a drawer over the left of
     the lower half, so the layers' sample slots stay in view while browsing. The
     sidechain trigger lives in the settings (the header's gear). */
 class DrumFoundryEditor::MainPanel : public juce::Component,
@@ -332,7 +333,8 @@ public:
           drive2 ("Drive 2", colours::drive), comp1 ("Comp", FxChainStrip::colourFor (fxComp1)),
           comp2 ("Comp 2", FxChainStrip::colourFor (fxComp2)), clip1 ("Clip", FxChainStrip::colourFor (fxClip1)),
           clip2 ("Clip 2", FxChainStrip::colourFor (fxClip2)), scActivity (colours::trigger),
-          reverbToOutput (FlowArrow::Direction::right), eqOverlay (p), reverbOverlay (p)
+          reverbToOutput (FlowArrow::Direction::right), analyzerToOutput (FlowArrow::Direction::right),
+          outputToMaster (FlowArrow::Direction::right), eqOverlay (p), reverbOverlay (p)
     {
         auto& s = p.getState();
 
@@ -399,7 +401,7 @@ public:
                              "listening, and finding resonances in the hit.");
         eqExpand.onClick = [this] { setEqVisible (true); };
         eq.setHeaderComponent (eqExpand, 46);
-        revExpand.setTooltip ("Open the full reverb: its response, the engine (Cloud or Classic) and every control");
+        revExpand.setTooltip ("Open the full reverb: its response, the engine (Cloud, Classic or Natural) and every control");
         revExpand.onClick = [this] { setReverbVisible (true); };
         reverb.setHeaderComponent (revExpand, 46);
         reverbOverlay.onClose = [this] { setReverbVisible (false); };
@@ -421,6 +423,10 @@ public:
                                    "The display follows the last note played (see the KEY badge above it)."),
                            toggle (pid::choke, "CHOKE", colours::master, "Each new hit cuts off the previous one") },
                          1.1f);
+        auto& masterOut = knob (pid::masterOut, "Out", colours::master);
+        masterOut.getSlider().setTooltip ("Master Out: the instrument's final volume, after the output stage. "
+                                          "Part of the session, so loading a preset doesn't change it");
+        master.addControl (masterOut);
 
         // Reverb, with the gate's switch over its own two knobs (Time and Fade).
         reverb.addControl (knob (pid::revMix, "Mix", colours::reverb));
@@ -582,8 +588,10 @@ public:
         for (auto* section : moduleSections())
             addChildComponent (section); // showModule() shows one at a time
 
-        // The arrow goes over the gap between the effects and the output, so it's added after them.
-        addAndMakeVisible (reverbToOutput);
+        // The arrows go over the gaps between the stages (effects, spectrum, output, master),
+        // so they're added after them.
+        for (auto* arrow : { &reverbToOutput, &analyzerToOutput, &outputToMaster })
+            addAndMakeVisible (arrow);
 
         addChildComponent (drawer);
         addChildComponent (settings);
@@ -612,27 +620,32 @@ public:
         layoutWeighted (area.removeFromTop (232), { { &body, 1.0f }, { &layers, 1.0f } });
         area.removeFromTop (10);
 
-        // Effects and output along the bottom. The output (spectrum, then the filter,
-        // gain and clipper) sits at the bottom right, where the signal leaves.
+        // The stages along the bottom, in signal order from left to right: the effects, the
+        // spectrum, the output (filter, gain and clipper), and Master, whose Out is the last
+        // volume before the signal leaves (it also holds Velocity, KEY and CHOKE).
         auto bottom = area.removeFromBottom (264);
-        auto out = bottom.removeFromRight (620);
-        output.setBounds (out.removeFromRight (184));
-        out.removeFromRight (gap);
-        analyzer.setBounds (out);
+        master.setBounds (bottom.removeFromRight (200));
+        bottom.removeFromRight (gap);
+        output.setBounds (bottom.removeFromRight (184));
+        bottom.removeFromRight (gap);
+        analyzer.setBounds (bottom.removeFromRight (400));
         bottom.removeFromRight (gap);
 
-        // The effects chain: its strip (the modules in signal order) over the selected
-        // module's panel, then out to the analyzer and output. Master isn't in the chain,
-        // so it takes the corner on the left.
+        // The effects chain: its strip (the modules in signal order) over the selected module's panel.
         chainStrip.setBounds (bottom.removeFromTop (32));
         bottom.removeFromTop (gap);
-        master.setBounds (bottom.removeFromLeft (150));
-        bottom.removeFromLeft (gap);
         for (auto* section : moduleSections())
             section->setBounds (bottom);
 
-        reverbToOutput.setBounds (juce::Rectangle<int> (FlowArrow::size, FlowArrow::size)
-                                      .withCentre ({ (bottom.getRight() + analyzer.getX()) / 2, bottom.getCentreY() }));
+        // An arrow over each gap, halfway down the panels.
+        const auto arrowBetween = [] (FlowArrow& arrow, const juce::Component& from, const juce::Component& to, int centreY)
+        {
+            arrow.setBounds (juce::Rectangle<int> (FlowArrow::size, FlowArrow::size)
+                                 .withCentre ({ (from.getRight() + to.getX()) / 2, centreY }));
+        };
+        arrowBetween (reverbToOutput, drive, analyzer, bottom.getCentreY());
+        arrowBetween (analyzerToOutput, analyzer, output, bottom.getCentreY());
+        arrowBetween (outputToMaster, output, master, bottom.getCentreY());
 
         area.removeFromBottom (10);
         display.setBounds (area);
@@ -780,7 +793,8 @@ public:
     Section drive2, comp1, comp2, clip1, clip2;  // the chain's other modules
     FxChainStrip chainStrip;
     ActivityLight scActivity;
-    FlowArrow reverbToOutput;                    // the chain out to the analyzer and output
+    FlowArrow reverbToOutput;                    // the chain out to the analyzer
+    FlowArrow analyzerToOutput, outputToMaster;  // and on through the output to Master
     std::array<CompScope, 2> compScopes { CompScope (FxChainStrip::colourFor (fxComp1)), CompScope (FxChainStrip::colourFor (fxComp1)) };
     SettingsOverlay settings;
     SaveOverlay overlay;
