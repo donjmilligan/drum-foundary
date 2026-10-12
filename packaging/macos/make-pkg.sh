@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the macOS installer: dist/DrumFoundry-<version>-macOS.pkg.
+# Builds the macOS installer: installers/Mac/DrumFoundry-<version>-macOS.pkg.
 #
 # Usage:
 #   packaging/macos/make-pkg.sh             configure + build universal Release, then package
@@ -26,7 +26,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$REPO_ROOT/build-release}"
-DIST_DIR="$REPO_ROOT/dist"
+DIST_DIR="$REPO_ROOT/installers/Mac"
 
 PRODUCT="Drum Foundry"
 ID_BASE="com.therestears.drumfoundry"

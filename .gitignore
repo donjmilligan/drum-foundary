@@ -14,5 +14,3 @@ Docs/*.pdf
 renders/
 # the 525 mark's 3000 px original (© Theres Tears Records, all rights reserved; the build uses assets/Theres_Tears_Mark.png)
 assets/525_Theres_Tears_Records_All_Rights_Reserved.png
-# installers made by packaging/ (macOS .pkg, Windows setup .exe)
-dist/

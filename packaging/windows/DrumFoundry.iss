@@ -1,4 +1,4 @@
-; Inno Setup script for the Windows installer: dist\DrumFoundry-<version>-Windows-Setup.exe.
+; Inno Setup script for the Windows installer: installers\Windows\DrumFoundry-<version>-Windows-Setup.exe.
 ;
 ; Usage (from the repo root, after a Release build):
 ;   ISCC.exe /DAppVersion=0.1.0 /DBuildDir=<absolute path to build\DrumFoundry_artefacts\Release> packaging\windows\DrumFoundry.iss
@@ -70,7 +70,7 @@ InfoBeforeFile={#RepoDir}NOTICE
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
-OutputDir={#RepoDir}dist
+OutputDir={#RepoDir}installers\Windows
 OutputBaseFilename=DrumFoundry-{#AppVersion}-Windows-Setup
 
 ; A DAW holding the plug-in open blocks the update. .vst3 is added because the
