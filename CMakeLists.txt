@@ -128,9 +128,9 @@ endif()
 
 juce_add_plugin(DrumFoundry
     PRODUCT_NAME "Drum Foundry"
-    COMPANY_NAME "Milligan Audio"
+    COMPANY_NAME "Theres Tears Records"
     ICON_BIG assets/Theres_Tears_Icon.png
-    BUNDLE_ID com.milliganaudio.drumfoundry
+    BUNDLE_ID com.therestears.drumfoundry
     PLUGIN_MANUFACTURER_CODE Mlgn
     PLUGIN_CODE Drf1
     FORMATS ${DRUMFOUNDRY_FORMATS}

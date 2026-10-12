@@ -29,7 +29,7 @@ BUILD_DIR="${BUILD_DIR:-$REPO_ROOT/build-release}"
 DIST_DIR="$REPO_ROOT/dist"
 
 PRODUCT="Drum Foundry"
-ID_BASE="com.milliganaudio.drumfoundry"
+ID_BASE="com.therestears.drumfoundry"
 MIN_MACOS="11.0"
 
 DO_BUILD=1
