@@ -1,7 +1,7 @@
 ; Inno Setup script for the Windows installer: installers\Windows\DrumFoundry-<version>-Windows-Setup.exe.
 ;
 ; Usage (from the repo root, after a Release build):
-;   ISCC.exe /DAppVersion=0.1.0 /DBuildDir=<absolute path to build\DrumFoundry_artefacts\Release> packaging\windows\DrumFoundry.iss
+;   ISCC.exe /DAppVersion=0.1.1 /DBuildDir=<absolute path to build\DrumFoundry_artefacts\Release> packaging\windows\DrumFoundry.iss
 ;
 ; Both defines are optional; the defaults below suit a local build in <repo>\build.
 ; Needs Inno Setup 6.3 or newer (the x64compatible architecture identifier).
