@@ -220,9 +220,11 @@ public:
         and Clip Mode has Comp at the end; a patch without the property gets the chain it
         always had (FxChain::defaults()). Format 7: Body Style has the basic waveforms
         (Sine .. Triangle) before Sample (Sample was at 11). Format 8: the reverb has an
-        engine, Cloud by default; older patches load on Classic, the reverb they had. */
+        engine, Cloud by default; older patches load on Classic, the reverb they had. Format 9:
+        EQ shelves have working slopes (older ones load at 12 dB/oct). Format 10: Body Style
+        has Wood before Sample (Sample was at 16). */
     static const juce::Identifier formatVersionId;
-    static constexpr int stateFormatVersion = 9;
+    static constexpr int stateFormatVersion = 10;
     /** The master chain's order, on the state tree (see setFxChain()). */
     static const juce::Identifier fxChainId;
     static juce::Identifier envelopeTreeId (int envIndex);

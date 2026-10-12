@@ -109,7 +109,7 @@ int run()
             fail ("Square's Width doesn't narrow the pulse");
     }
 
-    // --- Body Style: format 3-6 Sample (11) loads as Sample; the waveforms keep theirs ---------------
+    // --- Body Style: format 3-6 Sample (11) and 7-9 Sample (16) load as Sample; the others keep theirs ---
     {
         const auto styleAfterLoading = [] (int format, double value)
         {
@@ -124,10 +124,14 @@ int run()
             return juce::roundToInt (loaded.getState().getRawParameterValue (pid::bodyStyle)->load());
         };
         const int oldSample = styleAfterLoading (6, 11.0), tonal = styleAfterLoading (6, 10.0), sine = styleAfterLoading (7, 11.0),
-                  older = styleAfterLoading (2, 6.0);
-        if (oldSample != bodySample || tonal != bodyTonal || sine != bodySine || older != bodySample)
+                  older = styleAfterLoading (2, 6.0), format9Sample = styleAfterLoading (9, 16.0),
+                  triangle = styleAfterLoading (9, 15.0), wood = styleAfterLoading (10, 16.0);
+        if (oldSample != bodySample || tonal != bodyTonal || sine != bodySine || older != bodySample
+            || format9Sample != bodySample || triangle != bodyTriangle || wood != bodyWood)
             fail ("Body Style migration: format 6 Sample -> " + juce::String (oldSample) + ", Tonal -> " + juce::String (tonal)
-                  + ", format 7 Sine -> " + juce::String (sine) + ", format 2 Sample -> " + juce::String (older));
+                  + ", format 7 Sine -> " + juce::String (sine) + ", format 2 Sample -> " + juce::String (older)
+                  + ", format 9 Sample -> " + juce::String (format9Sample) + ", Triangle -> " + juce::String (triangle)
+                  + ", format 10 Wood -> " + juce::String (wood));
     }
 
     // --- The preset list: kicks, then snares, each with its Init first, then A to Z ---------------

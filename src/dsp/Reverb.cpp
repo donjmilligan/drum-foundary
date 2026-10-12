@@ -43,6 +43,7 @@ namespace
     constexpr float kSendRampMs = 20.0f;
     constexpr float kQuiet = 1.0e-5f;  // -100 dB: below this the reverb may go idle
     constexpr float kCloudGain = 0.64f; // the Cloud engine's wet level, matched to Classic's (-3.9 dB; see checkReverbEngines)
+    constexpr float kNaturalGain = 0.62f; // the Natural engine's, matched to Classic's (-4.2 dB; its rooms have unit energy; see checkReverbEngines)
 
     inline float finiteOr (float v, float fallback) noexcept { return std::isfinite (v) ? v : fallback; }
 
@@ -127,6 +128,7 @@ void Reverb::prepare (double sr)
     idleAfter = (int) std::ceil (maxPreDelay + (float) numDiffusers * diffusion + lineBase.back() + modDepth) + kTick;
 
     cloud.prepare (sr);
+    natural.prepare (sr);
     reset();
     prepared = true;
 }
@@ -149,6 +151,9 @@ void Reverb::reset() noexcept
     cloud.reset();
     cloudIdle = true;
     cloudQuiet = 0;
+    natural.reset();
+    naturalIdle = true;
+    naturalQuiet = 0;
     idle = true;
     quietSamples = 0;
     clock = 0;
@@ -415,12 +420,21 @@ void Reverb::process (float* left, float* right, int n, const DrumParams& p,
         cloud.reset();
         cloudIdle = true;
         cloudQuiet = 0;
+        natural.reset();
+        naturalIdle = true;
+        naturalQuiet = 0;
         idle = true;
     }
     if (engine == revEngineCloud)
     {
         juce::ScopedNoDenormals noDenormals;
         processCloud (left, right, n, p, hitOffsets, numHits, hitDelay);
+        return;
+    }
+    if (engine == revEngineNatural)
+    {
+        juce::ScopedNoDenormals noDenormals;
+        processNatural (left, right, n, p, hitOffsets, numHits, hitDelay);
         return;
     }
 
@@ -618,6 +632,89 @@ void Reverb::processCloud (float* left, float* right, int n, const DrumParams& p
     for (; h < numHits; ++h)
         sinceHit = (int64_t) (n - hitOffsets[h]) - hitDelay;
     idle = cloudIdle;
+}
+
+//==============================================================================
+void Reverb::processNatural (float* left, float* right, int n, const DrumParams& p,
+                             const int* hitOffsets, int numHits, int hitDelay) noexcept
+{
+    // The room convolves chunks of the send (it's linear, so the tail doesn't depend on
+    // the chunking); the send ramp, gate and wet cuts are per sample, as on Cloud. It goes
+    // idle (stops feeding the convolver, without clearing it) once nothing has gone in
+    // for longer than the room, so what's left in it is silence, and wakes on the first
+    // sample that sends anything.
+    NaturalReverb::Settings s;
+    s.size = juce::jlimit (0.0f, 1.0f, finiteOr (p.revSize, kRefSize));
+    s.decaySeconds = juce::jlimit (0.05f, 20.0f, finiteOr (p.revDecayMs, 2500.0f) * 0.001f);
+    s.preDelayMs = juce::jlimit (0.0f, maxPreDelayMs, finiteOr (p.revPreDelayMs, 0.0f));
+    s.diffusion = juce::jlimit (0.0f, 1.0f, finiteOr (p.revDiffusion, 0.7f));
+    s.width = juce::jlimit (0.0f, 1.0f, finiteOr (p.revWidth, 1.0f));
+    s.early = juce::jlimit (0.0f, 1.0f, finiteOr (p.revEarly, 0.2f));
+    s.damping = juce::jlimit (0.0f, 1.0f, finiteOr (p.revDamp, 0.4f));
+    natural.setSettings (s);
+
+    lowCutL.setCoefficients (lowCutTarget, 0.707f, (float) sampleRate);
+    copyCoefficients (lowCutR, lowCutL);
+    highCutL.setCoefficients (highCutTarget, 0.707f, (float) sampleRate);
+    copyCoefficients (highCutR, highCutL);
+
+    const int64_t idleAfterSamples = juce::jmax ((int64_t) idleAfter, (int64_t) natural.getImpulseLength() + naturalChunk);
+    int h = 0;
+    for (int start = 0; start < n; start += naturalChunk)
+    {
+        const int len = juce::jmin (naturalChunk, n - start);
+        bool loudIn = false;
+        for (int i = 0; i < len; ++i)
+        {
+            while (h < numHits && hitOffsets[h] <= start + i)
+            {
+                sinceHit = (int64_t) (start + i - hitOffsets[h]) - hitDelay;
+                ++h;
+            }
+            natGate[(size_t) i] = nextGateGain();
+
+            if (! juce::exactlyEqual (send, sendTarget))
+                send = std::abs (sendTarget - send) <= sendStep ? sendTarget
+                                                                : send + (sendTarget > send ? sendStep : -sendStep);
+            natInL[(size_t) i] = left[start + i] * send;
+            natInR[(size_t) i] = right[start + i] * send;
+            loudIn = loudIn || juce::jmax (std::abs (natInL[(size_t) i]), std::abs (natInR[(size_t) i])) >= kQuiet;
+        }
+        clock += len;
+
+        if (naturalIdle)
+        {
+            if (! loudIn)
+            {
+                natural.serviceWhileIdle();
+                continue;
+            }
+            naturalIdle = false;
+            naturalQuiet = 0;
+        }
+
+        natural.process (natInL.data(), natInR.data(), natOutL.data(), natOutR.data(), len);
+        bool loudOut = false;
+        for (int i = 0; i < len; ++i)
+        {
+            const float wL = highCutL.lowpass (lowCutL.highpass (kNaturalGain * natOutL[(size_t) i]));
+            const float wR = highCutR.lowpass (lowCutR.highpass (kNaturalGain * natOutR[(size_t) i]));
+            loudOut = loudOut || juce::jmax (std::abs (wL), std::abs (wR)) >= kQuiet;
+            left[start + i] += wL * natGate[(size_t) i];
+            right[start + i] += wR * natGate[(size_t) i];
+        }
+
+        naturalQuiet = loudIn || loudOut ? 0 : naturalQuiet + len;
+        if (naturalQuiet >= idleAfterSamples)
+        {
+            lowCutL.reset(); lowCutR.reset(); highCutL.reset(); highCutR.reset();
+            naturalIdle = true;
+        }
+    }
+
+    for (; h < numHits; ++h)
+        sinceHit = (int64_t) (n - hitOffsets[h]) - hitDelay;
+    idle = naturalIdle;
 }
 
 } // namespace drum

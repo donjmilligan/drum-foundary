@@ -6,6 +6,7 @@
 
 #include "../Parameters.h"
 #include "CloudReverb.h"
+#include "NaturalReverb.h"
 #include "DspUtils.h"
 #include <array>
 #include <vector>
@@ -16,13 +17,15 @@ namespace drum
 /** Stereo algorithmic reverb with a gate on its output, run as a send: it
     adds the wet signal to the buffer and leaves the dry signal alone.
 
-    Two engines make the reverberation (Reverb Engine): Cloud, Ghost Note Audio's
-    Cloud Seed (CloudReverb.h, the default), and Classic, the original FDN described
-    below (patches from before Cloud load on it). Both share the send (Mix), the gate
-    and the wet low cut and high cut; Cloud does its own pre-delay, and adds
-    Diffusion, Mod Depth / Rate, Width, Early and Damping. Going idle stops the Cloud
-    engine without clearing it (its tail is under -100 dB by then; clearing its
-    ~20 MB on the audio thread isn't worth it).
+    Three engines make the reverberation (Reverb Engine): Cloud, Ghost Note Audio's
+    Cloud Seed (CloudReverb.h, the default), Classic, the original FDN described
+    below (patches from before Cloud load on it), and Natural, a room built as an
+    impulse response and convolved (NaturalReverb.h): no recirculating delays, so it
+    doesn't ring metallically in small rooms. They share the send (Mix), the gate and
+    the wet low cut and high cut; Cloud and Natural do their own pre-delay, and use
+    Diffusion, Width, Early and Damping (Mod Depth / Rate are Cloud's alone). Going
+    idle stops the Cloud and Natural engines without clearing them (their tails are
+    under -100 dB by then; clearing megabytes on the audio thread isn't worth it).
 
     Classic:
 
@@ -88,6 +91,10 @@ public:
 
     bool isIdle() const noexcept { return idle; }
 
+    /** The plug-in's own reverb (true) builds Natural rooms on a background thread;
+        offline renders (false, the default) build them on the spot. Off the audio thread. */
+    void setRealtime (bool isRealtime) { natural.setAsync (isRealtime); }
+
     /** How long after a hit the wet signal can still be heard, in seconds:
         0 when it's off or Mix is 0, Gate Time + Gate Fade with the gate on (or less, if the
         reverb dies out sooner), pre-delay + 1.5 x Decay with it off. */
@@ -145,6 +152,8 @@ private:
     void clearBuffers() noexcept;
     void processCloud (float* left, float* right, int numSamples, const DrumParams& p,
                        const int* hitOffsets, int numHits, int hitDelay) noexcept;
+    void processNatural (float* left, float* right, int numSamples, const DrumParams& p,
+                         const int* hitOffsets, int numHits, int hitDelay) noexcept;
 
     bool prepared = false;
     double sampleRate = 44100.0;
@@ -184,13 +193,18 @@ private:
     bool idle = true;
     int quietSamples = 0;
 
-    // The Cloud engine and its scratch (process() works through a block in chunks of this)
-    static constexpr int cloudChunk = 256;
+    // The Cloud engine
     CloudReverb cloud;
-    std::array<float, cloudChunk> cloudInL {}, cloudInR {}, cloudOutL {}, cloudOutR {}, cloudGate {};
     int engine = revEngineCloud;
     bool cloudIdle = true;      // not feeding Cloud Seed (see processCloud())
     int64_t cloudQuiet = 0;     // samples of quiet in and out, while it runs
+
+    // The Natural engine, and its scratch (processNatural() works through a block in chunks of this)
+    static constexpr int naturalChunk = NaturalReverb::maxBlock;
+    NaturalReverb natural;
+    std::array<float, naturalChunk> natInL {}, natInR {}, natOutL {}, natOutR {}, natGate {};
+    bool naturalIdle = true;    // not feeding the convolver (see processNatural())
+    int64_t naturalQuiet = 0;
 
     // Gate
     GatePhase gatePhase = GatePhase::closed;

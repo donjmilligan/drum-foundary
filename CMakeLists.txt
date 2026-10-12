@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(DrumFoundry VERSION 0.1.0 LANGUAGES C CXX)
+project(DrumFoundry VERSION 0.1.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,6 +71,7 @@ target_sources(DrumFoundryCode INTERFACE
     src/dsp/DrumEngine.cpp
     src/dsp/MasterChain.cpp
     src/dsp/CloudReverb.cpp
+    src/dsp/NaturalReverb.cpp
     libs/CloudSeedCore/DSP/Biquad.cpp
     libs/CloudSeedCore/DSP/RandomBuffer.cpp
     src/dsp/ParametricEq.cpp

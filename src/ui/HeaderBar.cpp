@@ -755,9 +755,15 @@ void HeaderBar::paint (juce::Graphics& g)
         return juce::GlyphArrangement::getStringWidth (wordFont, "DRUM") + 7.0f
              + juce::GlyphArrangement::getStringWidth (thinFont, "FOUNDRY");
     };
-    if (const auto w = nameWidth(); w > (float) word.getWidth())
+    // The version follows the name, small; the name gives it room.
+    const juce::String version ("v" + juce::String (DRUMFOUNDRY_VERSION));
+    const auto versionFont = uiFont (10.0f, true).withExtraKerningFactor (0.06f);
+    const float versionGap = 6.0f;
+    const float versionWidth = juce::GlyphArrangement::getStringWidth (versionFont, version);
+    const float nameRoom = (float) word.getWidth() - versionGap - versionWidth;
+    if (const auto w = nameWidth(); w > nameRoom)
     {
-        const float scale = (float) word.getWidth() / w;
+        const float scale = nameRoom / w;
         wordFont = wordFont.withHeight (wordFont.getHeight() * scale);
         thinFont = thinFont.withHeight (thinFont.getHeight() * scale);
     }
@@ -768,6 +774,24 @@ void HeaderBar::paint (juce::Graphics& g)
     g.setFont (thinFont);
     g.setColour (colours::body);
     g.drawText ("FOUNDRY", word.withTrimmedLeft (drumW), juce::Justification::bottomLeft);
+
+    // Debossed into the panel: dark text with a faint highlight on its lower edge (lit from
+    // above, as the flow arrows are), on FOUNDRY's baseline.
+    {
+        const float x = (float) word.getX() + (float) drumW + juce::GlyphArrangement::getStringWidth (thinFont, "FOUNDRY") + versionGap;
+        const float baseline = (float) word.getBottom() - thinFont.getDescent();
+        const auto drawVersion = [&] (float dy)
+        {
+            juce::GlyphArrangement glyphs;
+            glyphs.addLineOfText (versionFont, version, x, baseline + dy);
+            glyphs.draw (g);
+        };
+        g.setFont (versionFont);
+        g.setColour (juce::Colours::white.withAlpha (0.09f));
+        drawVersion (1.0f);
+        g.setColour (colours::panel.darker (0.75f));
+        drawVersion (0.0f);
+    }
 
     const auto byFont = uiFont (11.0f).withExtraKerningFactor (0.04f);
     g.setFont (byFont);

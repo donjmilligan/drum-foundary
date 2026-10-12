@@ -40,6 +40,10 @@ namespace colours
     inline const juce::Colour brand    { 0xff2a6aad }; // the label's mark: its navy (#00335D), lifted to read on the dark UI
 
     juce::Colour forEnvelope (int envIndex);
+    /** A chart layer's colour (0 Body, 1 Noise, 2 Click, 3 on the extra layers), as on its
+        tab. The display draws the selected layer's curve in it, even when the layer is grouped
+        with another layer's curve. */
+    juce::Colour forLayer (int chartLayer);
 
     /** LFO 1, 2 and 3: their handles, waves, and the rings on the knobs they modulate. */
     juce::Colour lfo (int index);

@@ -138,6 +138,7 @@ DrumFoundryProcessor::DrumFoundryProcessor (WrapperType busesFor)
     apvts.state.setProperty (presetNameId, "Init", nullptr);
     publishTables();
     engine.setTables (*publishedTables);
+    engine.setRealtime (true); // the Natural reverb builds its rooms off the audio thread
 
     samples.onUserLoad = [this] (SampleSlot slot)
     {
@@ -563,6 +564,16 @@ void DrumFoundryProcessor::loadStateTree (const juce::ValueTree& tree, bool reus
         for (auto child : copy)
             if (child.hasType (paramTypeId) && child.getProperty (paramIdId).toString() == pid::bodyStyle
                 && juce::approximatelyEqual ((double) child.getProperty (paramValueId), 11.0))
+                child.setProperty (paramValueId, (double) sampleStyleIndex (bodyStyleNames), nullptr);
+    }
+
+    // Format 7-9 patches had Sample at index 16 of Body Style, where Wood now is. (Older
+    // formats' Sample was moved to the current index above.)
+    if (const int format = (int) copy.getProperty (formatVersionId, 1); format >= 7 && format < 10)
+    {
+        for (auto child : copy)
+            if (child.hasType (paramTypeId) && child.getProperty (paramIdId).toString() == pid::bodyStyle
+                && juce::approximatelyEqual ((double) child.getProperty (paramValueId), 16.0))
                 child.setProperty (paramValueId, (double) sampleStyleIndex (bodyStyleNames), nullptr);
     }
 

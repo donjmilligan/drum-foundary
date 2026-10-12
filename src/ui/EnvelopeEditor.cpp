@@ -362,7 +362,7 @@ void EnvelopeCanvas::drawGhosts (juce::Graphics& g, juce::Rectangle<float> plot,
     for (const auto& ghost : ghostCurves (p))
     {
         const int l = ghost.layer, env = ghost.env;
-        const auto colour = colours::forEnvelope (env).withMultipliedAlpha (ghost.playing ? 1.0f : 0.55f);
+        const auto colour = colours::forLayer (l).withMultipliedAlpha (ghost.playing ? 1.0f : 0.55f);
         juce::Path line;
         const float x0 = juce::jmax (plot.getX(), timeToX (0.0f)), x1 = juce::jmin (plot.getRight(), timeToX (1.0f));
         line.startNewSubPath (x0, ghostY (env, x0));
@@ -1664,7 +1664,7 @@ void EnvelopeCanvas::drawPitchLabels (juce::Graphics& g, juce::Rectangle<float> 
         if (y < plot.getY() || y > plot.getBottom())
             return;
 
-        const auto colour = colours::forEnvelope (env);
+        const auto colour = colours::forLayer (layer);
         const float dashes[] { 5.0f, 4.0f };
         g.setColour (colour.withAlpha (0.35f));
         g.drawDashedLine ({ plot.getX(), y, plot.getRight(), y }, dashes, 2, 1.0f);
@@ -1688,7 +1688,7 @@ void EnvelopeCanvas::drawAmpGrid (juce::Graphics& g, juce::Rectangle<float> plot
                                              colours::clipZone.withAlpha (0.04f), 0.0f, zone.getBottom(), false));
     g.fillRect (zone);
 
-    const auto accent = colours::forEnvelope ((int) active);
+    const auto accent = colours::forLayer (layer);
     struct Mark { float gain; const char* text; };
     static constexpr Mark marks[] { { 4.0f, "+12" }, { 2.0f, "+6" }, { 1.0f, "0 dB" }, { 0.5f, "-6" }, { 0.25f, "-12" }, { 0.0f, "-inf" } };
 
@@ -1939,7 +1939,7 @@ void EnvelopeCanvas::drawEnvelope (juce::Graphics& g, juce::Rectangle<float> plo
 {
     const auto& env = envs[(size_t) envIndex];
     const auto& pts = env.getPoints();
-    const auto colour = colours::forEnvelope (envIndex);
+    const auto colour = colours::forLayer (layer); // the selected layer's, even on a grouped curve
 
     juce::Path curve;
     bool started = false;
@@ -2103,7 +2103,7 @@ void EnvelopeCanvas::drawLanes (juce::Graphics& g, juce::Rectangle<float> plot) 
 
 void EnvelopeCanvas::drawHud (juce::Graphics& g, juce::Rectangle<float> plot, const DrumParams& p) const
 {
-    const auto accent = colours::forEnvelope ((int) active);
+    const auto accent = colours::forLayer (layer);
     const auto hudArea = juce::Rectangle<float> (plot.getRight() - 606.0f, plot.getY() - 2.0f, 600.0f, 16.0f);
 
     const Hit focus = drag.kind != Hit::none ? drag : hover;
@@ -2608,14 +2608,11 @@ void DisplayPanel::syncFromCanvas()
     ui.chartLayer = layer;
     ui.chartTab = tab;
 
-    // The tabs' underline takes the colour of the curve on show.
-    const auto curveColour = colours::forEnvelope (canvas.resolveEnvelope (layer, tab) >= 0 ? canvas.resolveEnvelope (layer, tab)
-                                                                                           : canvas.getActiveEnvelope());
+    // The tabs' underline takes the selected layer's colour, as its curves do.
     for (int t = 0; t < 2; ++t)
     {
         tabs[(size_t) t].setToggleState (t == tab && ! lfoShown, juce::dontSendNotification);
-        const int env = canvas.resolveEnvelope (layer, t);
-        tabs[(size_t) t].setColour (juce::TextButton::buttonOnColourId, env >= 0 ? colours::forEnvelope (env) : curveColour);
+        tabs[(size_t) t].setColour (juce::TextButton::buttonOnColourId, colours::forLayer (layer));
     }
     tabs[lfoTab].setToggleState (lfoShown, juce::dontSendNotification);
     tabs[lfoTab].setColour (juce::TextButton::buttonOnColourId, colours::lfo (0));

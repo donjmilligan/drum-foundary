@@ -100,7 +100,7 @@ private:
     std::vector<std::unique_ptr<Knob>> knobs;
     std::unique_ptr<ToggleSwitch> gateSwitch;
     std::vector<Group> groups;
-    std::vector<juce::Component*> cloudOnly;
+    std::vector<juce::Component*> cloudOnly, notClassic; // dimmed on the other engines
     juce::Rectangle<int> titleArea, creditArea, engineLabelArea;
     int lastEngine = -1;
 

@@ -28,6 +28,7 @@ enum BodyStyle
     bodySquare,
     bodyRoundSquare,
     bodyTriangle,
+    bodyWood,       // a snare head, after the waveforms so older patches keep their indices
     bodySample,
     numBodyStyles
 };
@@ -89,7 +90,8 @@ enum LayerEnv
 // (noiseWires .. noiseCrackle). Likewise a Click layer's type is a ClickType
 // from clickTick to clickTok, and a Body layer's style a BodyStyle from
 // bodyClassic to bodyTriangle. Sample is always the last entry of the core
-// lists (see sampleStyleIndex() in Parameters.h), so always use the enum.
+// lists (see sampleStyleIndex() in Parameters.h), so always use the enum. A Body
+// layer can also be Wood (bodyWood), the entry after Triangle.
 
 /*  What each knob does per style. The UI relabels the knobs with these captions,
     and dims a knob whose caption is nullptr (it has no effect in that style).
@@ -100,6 +102,12 @@ enum LayerEnv
     fade to a sine above ~1.5 kHz so nothing aliases):
       Classic   Shape = sine -> triangle -> square, Overtone = level of a sine at OT Ratio (decays at 0.3 x Length),
                 Head Modes = six inharmonic membrane partials.
+      Wood      A wooden shell and head: a resonator at the fundamental and eight damped wood modes (at
+                x1.61 .. x5.79, measured from wood snares), rung by a stick strike plus a little grain.
+                Shape = Hardness: a shorter strike (2 ms .. 0.1 ms) that rings the upper modes more.
+                Overtone = Knock: the wood modes' level (0 dB = eight times the fundamental). OT Ratio = Spread:
+                where the main knock mode sits (x2.54 as measured), every mode stretched along. Head Modes =
+                Damping: from ringing (0) to a dead, dry knock (100%), the fundamental and modes together.
       Membrane  Shape = Strike: stick hardness. Brightens the upper modes and sets the head's own fast pitch drop
                 (tension glide, ~5 ms, scaled by velocity). Overtone = level of the (1,1) mode. OT Ratio = Spread:
                 the (1,1) mode's ratio, with every other mode stretched along (x1.59 = an ideal membrane).
@@ -235,6 +243,7 @@ inline const char* bodyShapeCaption (int style) noexcept
         case bodySquare:   return "Width";
         case bodyRoundSquare: return "Corner";
         case bodyTriangle: return "Skew";
+        case bodyWood:     return "Hardness";
         default:           return nullptr;
     }
 }
@@ -255,6 +264,7 @@ inline const char* bodyOvertoneCaption (int style) noexcept
         case bodyHard:     return "Bark";
         case bodyFold:     return "Knock";
         case bodyTonal:    return "Harmonics";
+        case bodyWood:     return "Knock";
         default:           return nullptr;
     }
 }
@@ -274,6 +284,7 @@ inline const char* bodyRatioCaption (int style) noexcept
         case bodyHard:     return "Bark Ratio";
         case bodyFold:     return "Knock Ratio";
         case bodyTonal:    return "Stretch";
+        case bodyWood:     return "Spread";
         default:           return nullptr;
     }
 }
@@ -291,6 +302,7 @@ inline const char* bodyModesCaption (int style) noexcept
         case bodyHard:     return "Crunch";
         case bodyFold:     return "Fold Decay";
         case bodyTonal:    return "Harm Decay";
+        case bodyWood:     return "Damping";
         default:           return nullptr;
     }
 }
@@ -428,6 +440,7 @@ inline LayerBodyTone layerBodyTone (int style) noexcept
         case bodyHard:     return { 0.4f,  3.0f,   0.4f };  // Bark at x3, -8 dB; Crunch 40%
         case bodyFold:     return { 0.25f, 2.6f,   0.5f };  // Knock at x2.6, -12 dB; Fold Decay 50%
         case bodyTonal:    return { 0.5f,  2.0f,   0.5f };  // Harmonics -6 dB, exact (x2), Harm Decay 50%
+        case bodyWood:     return { 0.5f,  2.54f,  0.5f };  // Knock -6 dB, as measured, Damping 50%
         case bodyClassic:
         default:           return { 0.3f,  1.594f, 0.25f }; // the Body layer's defaults
     }

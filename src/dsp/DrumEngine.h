@@ -87,6 +87,8 @@ public:
     int getLatencySamples() const noexcept { return master.getLatencySamples(); }
     /** See MasterChain::setPreClipCapture() (offline renders only). */
     void setPreClipCapture (juce::AudioBuffer<float>* buffer) noexcept { master.setPreClipCapture (buffer); }
+    /** The plug-in's own engine (true): see Reverb::setRealtime(). Off the audio thread. */
+    void setRealtime (bool isRealtime) { master.setRealtime (isRealtime); }
     int getClipperLatencySamples() const noexcept { return master.getClipperLatencySamples(); }
     /** See MasterChain::setCompCapture() / getCompLeadSamples() (offline renders only). */
     void setCompCapture (int n, juce::AudioBuffer<float>* buffer) noexcept { master.setCompCapture (n, buffer); }
