@@ -39,7 +39,7 @@
 AppId={{8AE2D06D-BED6-43A3-9E3F-8299060CA1A4}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher=Milligan Audio
+AppPublisher=Theres Tears Records
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
