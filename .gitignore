@@ -10,6 +10,9 @@ libs/JUCE/
 Docs/*.pdf
 # unrelated notes
 /1
+# installers: built by CI and attached to GitHub releases, never committed
+# (packaging/macos/make-pkg.sh and the Inno Setup script write here too)
+installers/
 # rendered audio and pictures from the dev tools (regenerate with drumfoundry-tools)
 renders/
 # the 525 mark's 3000 px original (© Theres Tears Records, all rights reserved; the build uses assets/Theres_Tears_Mark.png)
