@@ -59,6 +59,17 @@ jobs:
         shell: pwsh
         run: cmake --build build --config Release --parallel
 
+      # Uploaded before packaging on purpose: when a later step fails, the
+      # plug-in that compiled fine is still downloadable from the run.
+      - name: Upload raw plug-in and app
+        uses: actions/upload-artifact@v7
+        with:
+          name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-raw
+          path: |
+            build/DrumFoundry_artefacts/Release/VST3
+            build/DrumFoundry_artefacts/Release/Standalone/Drum Foundry.exe
+          if-no-files-found: error
+
       # Inno Setup 6 is preinstalled on the windows-2025 runner image. Fall back
       # to Chocolatey if it's missing or older than 6.3 (the script uses
       # x64compatible, which needs 6.3).
@@ -76,10 +87,19 @@ jobs:
             foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return $c } }
             return $null
           }
+          # Some Inno Setup builds ship an ISCC.exe with no version resource, so
+          # FileMajorPart reads 0 and a plain "-ge 6.3" rejects a compiler that
+          # is in fact new enough. An absent version is accepted and left to the
+          # "#if Ver < EncodeVer(6, 3, 0)" guard in DrumFoundry.iss, which asks
+          # the compiler its real version instead of reading the file resource.
           function Test-IsccVersion($path) {
             $v = (Get-Item $path).VersionInfo
             $ver = [version]::new($v.FileMajorPart, $v.FileMinorPart)
-            Write-Host "Found $path (version $($v.FileVersion))"
+            Write-Host "Found $path (version resource: $($v.FileVersion))"
+            if ($ver -eq [version]'0.0') {
+              Write-Host "No version resource; leaving the 6.3 check to DrumFoundry.iss."
+              return $true
+            }
             return $ver -ge [version]'6.3'
           }
 
@@ -112,15 +132,6 @@ jobs:
         with:
           name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-installer
           path: dist/DrumFoundry-${{ steps.version.outputs.version }}-Windows-Setup.exe
-          if-no-files-found: error
-
-      - name: Upload raw plug-in and app
-        uses: actions/upload-artifact@v7
-        with:
-          name: DrumFoundry-${{ steps.version.outputs.version }}-Windows-raw
-          path: |
-            build/DrumFoundry_artefacts/Release/VST3
-            build/DrumFoundry_artefacts/Release/Standalone/Drum Foundry.exe
           if-no-files-found: error
 
   macos:
