@@ -2,7 +2,7 @@
 
 by Theres Tears Records.
 
-A kick and snare synthesizer plugin in the spirit of Sonic Academy's Kick 3. You draw the pitch and amplitude envelopes directly over the rendered waveform, and build the sound from layers. Each layer can be synthesized or play a sample you import.
+A kick and snare synthesizer plugin in the spirit of drum synths like Sonic Academy's Kick 3, Plugin Boutique's BigKick, D16 Group's Punchbox and Sonic Charge's Microtonic (see [Trademarks](#trademarks)). You draw the pitch and amplitude envelopes directly over the rendered waveform, and build the sound from layers. Each layer can be synthesized or play a sample you import.
 
 - **Body**: the tonal drum head. It follows the drawn **pitch** curve and **body** level curve. The style menu is grouped into **Kick** (Kick and the kick bodies), **Snare** (Classic, Membrane), **Kick or Snare** (808, 909, FM), **Basic** waveforms, and Sample. Pick a style:
   - **Classic**: sine, then triangle, then square, with an overtone and head modes.
@@ -68,7 +68,7 @@ To leave out the VST3, the AU or the app, click **Customize** in the installer a
 
 The first time you open the .pkg, macOS blocks it because it isn't signed. On macOS 15 (Sequoia) or later, click **Done**, open **System Settings ▸ Privacy & Security**, scroll down to the message about the installer, and click **Open Anyway**. On older macOS, right-click the .pkg, choose **Open**, then click **Open** again.
 
-After installing, open your DAW and rescan plug-ins. Drum Foundry is an instrument, from Milligan Audio. If a DAW doesn't show the AU, run `killall -9 AudioComponentRegistrar` in Terminal, then rescan or restart the DAW.
+After installing, open your DAW and rescan plug-ins. Drum Foundry is an instrument, from Theres Tears Records. If a DAW doesn't show the AU, run `killall -9 AudioComponentRegistrar` in Terminal, then rescan or restart the DAW.
 
 ### Windows
 
@@ -132,7 +132,7 @@ You need macOS 11 (Big Sur) or later, on an Apple Silicon or Intel Mac. The full
    cmake --build build
    ```
 
-6. **Use it.** The build installs the plug-ins for you, into `~/Library/Audio/Plug-Ins/VST3` (Drum Foundry.vst3) and `~/Library/Audio/Plug-Ins/Components` (Drum Foundry.component, the AU). Open your DAW and rescan plug-ins. Drum Foundry is an instrument, from Milligan Audio. The standalone app is in `build/DrumFoundry_artefacts/Release/Standalone/`, and you can drag it into Applications.
+6. **Use it.** The build installs the plug-ins for you, into `~/Library/Audio/Plug-Ins/VST3` (Drum Foundry.vst3) and `~/Library/Audio/Plug-Ins/Components` (Drum Foundry.component, the AU). Open your DAW and rescan plug-ins. Drum Foundry is an instrument, from Theres Tears Records. The standalone app is in `build/DrumFoundry_artefacts/Release/Standalone/`, and you can drag it into Applications.
 
 To update later, run `git pull` in the `drum-foundary` folder, then step 5 again.
 
@@ -303,3 +303,7 @@ The full terms are in LICENSE and NOTICE; this summary doesn't replace them. JUC
 - **Cloud Seed** reverb algorithm: Copyright (c) 2024 Ghost Note Audio / Ghost Note Engineering Ltd, MIT License. The licence text is in `libs/CloudSeedCore/LICENSE` and has to ship with the plug-in (Settings > About also shows the notice). Drum Foundry isn't made by Ghost Note Audio; it uses their open-source algorithm.
 - Fonts: **[Inter](https://github.com/rsms/inter)** (text) and **[Archivo](https://github.com/Omnibus-Type/Archivo)** (titles and the product name), both under the SIL Open Font License 1.1. The font files and their licences are in `assets/fonts/`, and they're compiled into the plug-in, so it looks the same on macOS and Windows.
 - Built with **JUCE**.
+
+## Trademarks
+
+Kick 3, BigKick, Punchbox, Microtonic and the names of their makers (Sonic Academy, Plugin Boutique, D16 Group and Sonic Charge) are trademarks of their respective owners. They're named here only to describe the kind of instrument Drum Foundry is. Drum Foundry is an independent project and isn't affiliated with, endorsed by or sponsored by any of those companies, and it doesn't use any of their code, presets or samples.
