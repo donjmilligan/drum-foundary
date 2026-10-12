@@ -4,6 +4,10 @@
 
 **Version 0.1.1**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
 
+**Watch the tutorial:** [Drum Foundry VST Demo (OPEN SOURCE Drum Synth)](https://www.youtube.com/watch?v=25Y4Oa3mcRc)
+
+[![Drum Foundry VST Demo (OPEN SOURCE Drum Synth) on YouTube](https://img.youtube.com/vi/25Y4Oa3mcRc/maxresdefault.jpg)](https://www.youtube.com/watch?v=25Y4Oa3mcRc)
+
 ![Drum Foundry playing the DnB Neuro Snare preset: the Body, Noise and Click layers, the level curve drawn over the waveform, and the EQ, spectrum and output sections](assets/drum-foundry-screenshot.png)
 
 A kick and snare synthesizer plugin in the spirit of drum synths like Sonic Academy's Kick 3, Plugin Boutique's BigKick, D16 Group's Punchbox and Sonic Charge's Microtonic (see [Trademarks](#trademarks)). You draw the pitch and amplitude envelopes directly over the rendered waveform, and build the sound from layers. Each layer can be synthesized or play a sample you import.
