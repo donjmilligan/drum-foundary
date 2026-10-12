@@ -1,4 +1,4 @@
-# Drum Foundry
+# Drum Foundry VST
 
 **Version 0.1.0**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
 
