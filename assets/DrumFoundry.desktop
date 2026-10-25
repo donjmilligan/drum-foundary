@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Drum Foundry
+Comment=A kick and snare synthesizer plugin
+Exec=DrumFoundry
+Icon=drum-foundry
+Terminal=false
+Categories=Audio;AudioVideo;Music;
+Keywords=synth;drums;kick;snare;music;production;
+StartupWMClass=DrumFoundry
