@@ -4,7 +4,7 @@
 
 **Version 0.1.1**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
 
-**Mac and Windows installers links hosted by GitHub are in the installers/ directory.**
+**Mac, Linux, and Windows installers links hosted by GitHub are in the installers/ directory.**
 
 **Watch the tutorial:** [Drum Foundry VST Demo (OPEN SOURCE Drum Synth)](https://www.youtube.com/watch?v=25Y4Oa3mcRc)
 
@@ -58,7 +58,7 @@ A kick and snare synthesizer plugin in the spirit of drum synths like Sonic Acad
 - **Spectrum analyzer**: shows the audio leaving the plugin, with the output filter curve, draggable low-cut and high-cut handles, a readout of the loudest frequency and its note, and a L/R meter. Its **HIT** mode shows the spectrum of the rendered hit without playing it.
 - **Sample browser**: browses and searches your sample folders, starting at the Ableton User Library. Click a file to audition it, and double-click or drag it onto a layer to load it.
 
-It builds as VST3, AU and Standalone on macOS, and as VST3 and Standalone on Windows (JUCE 8, CMake).
+It builds as VST3, AU and Standalone on macOS, and as VST3 and Standalone on Windows and Linux (JUCE 8, CMake).
 
 ## Download
 
@@ -66,10 +66,11 @@ Download the newest version for your system:
 
 - **macOS:** [DrumFoundry-macOS.pkg](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-macOS.pkg)
 - **Windows:** [DrumFoundry-Windows-Setup.exe](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Windows-Setup.exe), or just the plug-in as [DrumFoundry-Windows-VST3.zip](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Windows-VST3.zip)
+- **Linux:** [DrumFoundry-Linux](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Linux), or just the plug-in as [DrumFoundry-Linux-VST3.tar.gz](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Linux-VST3.tar.gz)
 
 The same links are in [`installers/`](installers/README.md), and every version is on the [Releases page](https://github.com/donjmilligan/drum-foundary/releases).
 
-The installers aren't signed with an Apple or Microsoft certificate, so both systems warn you the first time. The steps below get past that.
+The macOS and Windows installers aren't signed with an Apple or Microsoft certificate, so both systems warn you the first time; the steps below get past that. The Linux downloads are plain archives with no installer, so there's nothing to get past there. If you'd rather build from source, `build.sh` builds and `install.sh` installs.
 
 ### macOS
 
@@ -95,6 +96,15 @@ Download `DrumFoundry-Windows-Setup.exe` (on the Releases page it's `DrumFoundry
 - the licence texts into the `Licenses` folder there
 
 If Windows says **Windows protected your PC**, click **More info**, then **Run anyway**. After installing, open your DAW and rescan plug-ins. To uninstall, go to **Settings ▸ Apps**, find Drum Foundry and click **Uninstall**.
+
+### Linux
+
+Download `DrumFoundry-Linux.tar.gz` (on the Releases page it's `DrumFoundry-<version>-Linux.tar.gz`), or just the plug-in as `DrumFoundry-Linux-VST3.tar.gz`. These are plain archives, not installers, so there's no signing warning to get past: unpack it and move the `Drum Foundry.vst3` folder it contains into `~/.vst3/`.
+
+```sh
+mkdir -p ~/.vst3
+mv "Drum Foundry.vst3" ~/.vst3/
+```
 
 *Making the installers yourself:* on a Mac, `packaging/macos/make-pkg.sh` builds a universal Release and writes the .pkg to `installers/Mac/`. It's unsigned unless you set the Developer ID variables described at the top of the script. The Windows installer is built on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3 or later, after a Release build into `build\` (see [Build](#build)): run `ISCC /DAppVersion=0.1.1 packaging\windows\DrumFoundry.iss`, using the version from `CMakeLists.txt` (without it the installer is labelled 0.0.0). The installer goes to `installers\Windows\`. The installer files themselves are never committed (only `installers/README.md` is): every CI run keeps the installers (and a zip of the bare Windows VST3) as downloadable artifacts, and each release attaches them on the Releases page.
 
@@ -214,6 +224,70 @@ To update later, run `git pull` in the `drum-foundary` folder, then steps 6 and 
 
 On Windows, user presets are saved in `Music\Drum Foundry\Presets`, DRAG exports go to `Music\Drum Foundry\Exports`, and the sample browser looks for the Ableton library in `Documents\Ableton`.
 
+### Linux
+
+Linux has no AU format, so you get the VST3 and the standalone app. The quickest way is the build script, which detects your distribution, installs any missing dependencies (skipping the sudo prompt entirely if everything is already installed), configures CMake and builds:
+
+```sh
+git clone https://github.com/donjmilligan/drum-foundary.git
+cd drum-foundary
+./build.sh
+```
+
+Options: --release (the default), --debug, --clean (delete the build folder first) and --no-install (build only, without offering to install afterwards).
+
+Supported distributions: Arch, CachyOS, Manjaro and EndeavourOS (pacman); Debian, Ubuntu, Mint and Pop!_OS (apt); Fedora and Nobara (dnf); openSUSE (zypper). On any other distribution, install the dependencies yourself and build manually (below).
+
+After the build, build.sh offers to run install.sh, which copies the VST3 to ~/.vst3/, the standalone app to ~/.local/bin/DrumFoundry, and installs a .desktop entry and icon so the app appears in your application menu. You can run it yourself at any time:
+
+```sh
+./install.sh              # install
+./install.sh --uninstall  # remove everything again
+```
+
+To build manually instead:
+
+1. Install the dependencies. JUCE needs a C++17 compiler, CMake 3.22 or later, Ninja, Git, and the development packages for ALSA, FreeType2, FontConfig, OpenGL, libcurl, GTK 3 and WebKit2GTK. build.sh installs exactly these: its install_*_deps functions list the package names for each distribution, so copy from there if you're doing it by hand.
+
+2. Get the source code, and move into its folder:
+
+```sh
+cd ~/Documents
+git clone https://github.com/donjmilligan/drum-foundary.git
+cd drum-foundary
+```
+
+3. Configure:
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDRUMFOUNDRY_BUILD_TOOLS=OFF
+```
+
+4. Build:
+
+```sh
+cmake --build build
+```
+
+5. Install it. The build makes a folder called Drum Foundry.vst3 in build/DrumFoundry_artefacts/Release/VST3/, and the standalone app in build/DrumFoundry_artefacts/Release/Standalone/. Either run ./install.sh, or copy the VST3 folder into ~/.vst3/ yourself:
+
+```sh
+mkdir -p ~/.vst3
+cp -r "build/DrumFoundry_artefacts/Release/VST3/Drum Foundry.vst3" ~/.vst3/
+```
+
+Open your DAW and rescan plug-ins. Drum Foundry is an instrument, from Theres Tears Records.
+
+To update later, run git pull in the drum-foundary folder, then step 4 again.
+
+If something goes wrong:
+
+- CMake can't find ALSA, FreeType, FontConfig, GTK or WebKit2GTK: the development packages are missing (-dev on Debian/Ubuntu, -devel on Fedora and openSUSE). Run ./build.sh to install them, or take the names from its install_*_deps functions.
+- A DAW doesn't show the plug-in: check that the DAW scans ~/.vst3/, then rescan. Some hosts need the plug-in folder added by hand.
+- The standalone app doesn't appear in the application menu: the .desktop entry runs DrumFoundry from ~/.local/bin, which most desktop sessions already have on the PATH. Log out and back in, or run update-desktop-database ~/.local/share/applications.
+- Something failed and you want a clean start: delete the build folder `rm -rf build` and go back to step 3.
+- On Linux, user presets are saved in ~/Music/Drum Foundry/Presets and DRAG exports go to ~/Music/Drum Foundry/Exports, the same paths the Using it section describes.
+
 ## Using it
 
 - **Display:** double-click to add a point, and double-click (or right-click) a point to remove it. Drag a segment's midpoint handle to bend that segment. Shift-drag gives fine vertical control. Scroll or pinch to zoom the time axis, and **FIT** resets the zoom.
@@ -223,13 +297,13 @@ On Windows, user presets are saved in `Music\Drum Foundry\Presets`, DRAG exports
 - **Amplitude above 0 dB:** the level curves can go up to +12 dB, into the tinted zone above the red 0 dB line. That drives the output stage. The **CLIP** menu in the display header picks it (a clipper shape, Comp or Off); a clipper shows its **Drive** and **Ceiling** there, and Comp its Threshold, Ratio, Attack, Release and Makeup. They're the same controls as in the Output section. The waveform behind the curves is exactly what's played, the same audio DRAG exports and a recording of the plug-in shows: after the output stage, top and bottom, each pixel showing the lowest and highest sample of either channel, so an offset or a lopsided shape shows as it is. On the LEVEL tab full scale (0 dBFS) sits on the 0 dB line and its mirror at the bottom, so you see what each clipper does where the signal meets that line: Hard's flat tops, Tube's squash (its positive half flattens first), Fold's folds. Nothing goes past it except with the output stage Off, whose output can. A ceiling under 0 dB, or the output compressor's threshold, shows as dashed lines on both sides.
 - **LFOs:** the display's **LFO** tab (next to PITCH and LEVEL) has three LFOs. Each has a shape (Sine, Triangle, Saw Down, Saw Up, Square, S&H, Drift), a **Rate** (0.1 to 100 Hz) or a tempo **Sync** (4 bars to 1/64, with triplets and dotted), a start **Phase**, and a mode: **Retrig** restarts it at its Phase on every hit, **One Shot** does the same but runs one cycle and holds (an extra envelope), and **Free** never restarts. Its picture shows what it does over one hit (Length), with the playhead. To modulate a knob, drag an LFO's name onto it: the knob gets a ring in the LFO's colour showing how far it can move, with a dot where it is now. Each LFO has four target slots; a slot's **Amount** (-100% to +100%) is how far it moves the knob, as a share of the knob's whole range. Click a slot's name to pick its target from a menu, × or right-click the knob to remove it. Several LFOs on one knob add up. LFOs are part of the patch (presets, sessions and undo), and the display and DRAG include them. While any LFO is routed, the engine applies them every 32 samples.
 - **Offsets:** the lanes under the display (one per layer), or each layer's **Offset** knob, move a layer up to 100 ms later or earlier. Moving one before 0 ms cuts off the part that would have played before the hit, shown hatched. The cut gets a 0.5 ms fade-in so it doesn't click. Double-click a lane to reset it.
-- **Layers:** Body has its own panel. Noise, Click and the extra layers share the tabbed **Layers** panel next to it: click a tab to show that layer. Every layer has **M** (mute) and **S** (solo) buttons, on Body's title bar and on each tab. Clicking them, or a layer's **Ø**, also switches to that layer: its tab is shown and the display edits its curves (switching back from the LFO tab if that's on show). Solo is exclusive: soloing one layer un-solos the rest (Cmd- or Shift-click adds to the soloed set). Mute wins over solo. While any layer is soloed, the others are silent and dimmed. **Ø** flips a layer's polarity, which helps when layers cancel each other out. Solo belongs to the session, not the preset. Each layer has a style menu and a sample strip (**IMPORT**, **BROWSE**, or drop a file from Finder or the browser). Knobs are relabelled for the chosen style, and dimmed where the style doesn't use them. **+** adds up to three extra layers: a Noise layer, a Click layer, a Sample layer (the browser opens on it), or a Sine sub an octave down. Their tabs are named after what they play, such as NOISE 2, CLICK 2, SAMPLE or SINE. A muted extra layer keeps its tab. **×** on a tab removes that layer.
+- **Layers:** Body has its own panel. Noise, Click and the extra layers share the tabbed **Layers** panel next to it: click a tab to show that layer. Every layer has **M** (mute) and **S** (solo) buttons, on Body's title bar and on each tab. Clicking them, or a layer's **Ø**, also switches to that layer: its tab is shown and the display edits its curves (switching back from the LFO tab if that's on show). Solo is exclusive: soloing one layer un-solos the rest (Cmd- or Shift-click on macOS, Ctrl- or Shift-click on Windows and Linux, adds to the soloed set). Mute wins over solo. While any layer is soloed, the others are silent and dimmed. **Ø** flips a layer's polarity, which helps when layers cancel each other out. Solo belongs to the session, not the preset. Each layer has a style menu and a sample strip (**IMPORT**, **BROWSE**, or drop a file from your file manager or the browser). Knobs are relabelled for the chosen style, and dimmed where the style doesn't use them. **+** adds up to three extra layers: a Noise layer, a Click layer, a Sample layer (the browser opens on it), or a Sine sub an octave down. Their tabs are named after what they play, such as NOISE 2, CLICK 2, SAMPLE or SINE. A muted extra layer keeps its tab. **×** on a tab removes that layer.
 - **Samples:** **BROWSER** in the header, or any layer's **BROWSE**, opens the sample browser on that layer. Click a file to audition it, and double-click, press Enter or drag it to load it. Loading a sample switches that layer to its Sample style. Sample paths are saved with the session and with user presets. A moved file shows as "Missing" and keeps its path.
 - **Analyzer and output filter:** drag the **HP** and **LP** handles, or use the Output section's knobs. Scroll over a handle to change its slope, and double-click it to switch that side off. **PEAK** shows the loudest frequency and its note, so you can tune a snare to about 200 Hz or a kick to about 50 Hz. With no audio playing, the analyzer switches to **HIT** and shows the spectrum of the rendered hit.
 - **Tune** is the pitch that C3 (MIDI 60) plays. With **KEY** on, other notes transpose the whole drum from there. The display, the pitch ruler (the note names the pitch curve sweeps through), the HIT spectrum and the trigger pad all follow the last note played. The **KEY** badge above the display shows that note, for example "KEY C1 · −24 st", in amber when it isn't C3. Click the badge to go back to C3 or to switch KEY off. DRAG exports the hit at that note too.
 - **DRAG** (top right) renders the current sound to a 24-bit WAV in `~/Music/Drum Foundry/Exports` and starts a drag, so you can drop it straight onto a track.
-- **Undo and redo:** the arrows right of **SAVE**, or Cmd+Z and Cmd+Shift+Z (or Cmd+Y). Their tooltips say what they'd undo, such as "Undo Tune" or "Undo preset load". Each gesture is one step: a knob drag, a point drag (dragging the pitch curve's end point moves Tune in the same step), a menu choice, a preset load, a sample load or clear, adding or removing a layer. Up to 100 steps are kept, and they survive closing the window. Changes that don't come from you (host automation, the host loading a session, anything while the window is closed) aren't steps: they quietly become the new starting point, and a session load clears the history. Undo leaves the sidechain settings and solo alone, as preset loads do. The shortcuts work while something in the plugin has the keyboard focus (after you click one of its buttons or menus, or the browser); Drum Foundry doesn't take the keyboard from the host by itself, so after a knob drag Cmd+Z may go to the host.
-- **Keyboard shortcuts:** **Space** plays a hit, like the play button (holding it plays one hit, not a roll). Cmd+Z undoes, and Cmd+Shift+Z or Cmd+Y redoes (Ctrl on Windows). **Settings ▸ Keyboard shortcuts** changes them: each action can have two keys. Click a key box and press the key you want, Backspace clears it, and Esc keeps the old one. A key you give to one action is taken from any other. Previous preset, Next preset and Show / hide browser start without keys. **RESET** puts the standard keys back. The keys are saved for every session and every open copy of Drum Foundry, in `Keys.settings` next to the browser's settings. Like any plug-in, Drum Foundry only gets keys after you click one of its buttons or menus. It doesn't take the keyboard from the host, so until then Space still starts and stops your DAW. Some hosts keep certain keys for themselves anyway.
+- **Undo and redo:** the arrows right of **SAVE**, or Cmd+Z and Cmd+Shift+Z (or Cmd+Y) on macOS, Ctrl+Z and Ctrl+Shift+Z (or Ctrl+Y) on Windows and Linux. Their tooltips say what they'd undo, such as "Undo Tune" or "Undo preset load". Each gesture is one step: a knob drag, a point drag (dragging the pitch curve's end point moves Tune in the same step), a menu choice, a preset load, a sample load or clear, adding or removing a layer. Up to 100 steps are kept, and they survive closing the window. Changes that don't come from you (host automation, the host loading a session, anything while the window is closed) aren't steps: they quietly become the new starting point, and a session load clears the history. Undo leaves the sidechain settings and solo alone, as preset loads do. The shortcuts work while something in the plugin has the keyboard focus (after you click one of its buttons or menus, or the browser); Drum Foundry doesn't take the keyboard from the host by itself, so after a knob drag Cmd+Z may go to the host.
+- **Keyboard shortcuts:** **Space** plays a hit, like the play button (holding it plays one hit, not a roll). Cmd+Z undoes, and Cmd+Shift+Z or Cmd+Y redoes (Ctrl on Windows and Linux). **Settings ▸ Keyboard shortcuts** changes them: each action can have two keys. Click a key box and press the key you want, Backspace clears it, and Esc keeps the old one. A key you give to one action is taken from any other. Previous preset, Next preset and Show / hide browser start without keys. **RESET** puts the standard keys back. The keys are saved for every session and every open copy of Drum Foundry, in `Keys.settings` next to the browser's settings. Like any plug-in, Drum Foundry only gets keys after you click one of its buttons or menus. It doesn't take the keyboard from the host, so until then Space still starts and stops your DAW. Some hosts keep certain keys for themselves anyway.
 - **Presets** are listed in groups: **Kick** (Init Kick first), **Snare** (Init first), then your own as **User Kick** and **User Snare**, each A to Z. The arrows step through them in that order. A preset counts as a kick if its name says "kick", or if (a user preset) its Body is a kick body; anything else counts as a snare.
 - **Presets set everything:** loading one sets every parameter, the effects chain's order and which layers are on (the **M** buttons): what a preset doesn't list goes back to its default, so nothing carries over from the sound before, except the session's own settings (Solo and the sidechain trigger). A layer a preset doesn't use is switched off, so its **M** is lit. A factory preset can list its effects chain (`chain` in FactoryPresets.cpp); the dev tool's `check` renders every factory preset and fails if a layer is on but silent, if muting a layer doesn't remove it, or if soloing it is silent.
 - **User presets** are saved to `~/Music/Drum Foundry/Presets/*.drumpreset`, a plain XML format.
@@ -283,6 +357,10 @@ On Windows, user presets are saved in `Music\Drum Foundry\Presets`, DRAG exports
 | `assets/Theres_Tears_Logo_Title_white_site.png`, `assets/Theres_Tears_Icon.png` | The THRSTRS (Theres Tears Records) logo, compiled in for the header's and Settings' "by" line, and the standalone app's icon (THRSTRS on a dark tile). These images are © Theres Tears Records, all rights reserved: they are not covered by any licence of the code or of the libraries it uses, and may not be reused without permission. |
 | `assets/fonts/` | The UI's fonts, compiled in: Inter Regular and SemiBold (text, `uiFont`), Archivo SemiExpanded SemiBold (titles, `titleFont`) and Archivo Expanded Bold and ExtraLight (the product name: a bold DRUM, `wordmarkFont`, and a thin FOUNDRY, `wordmarkThinFont`), with their SIL Open Font License texts. |
 | `tools/Tools.cpp`, `tools/Measure.*` | Dev tool (see below). Not shipped. |
+| `build.sh` | Linux build script: detects the distribution, installs any missing dependencies, configures CMake, builds, then offers to install. |
+| `install.sh` | Linux installer: copies the VST3 to `~/.vst3/`, the standalone app to `~/.local/bin/DrumFoundry`, and the `.desktop` entry and icon into `~/.local/share`. `--uninstall` reverses it. |
+| `assets/DrumFoundry.desktop` | The Linux desktop entry for the standalone app. |
+| `assets/Theres_Tears_Icon_512.png` | The icon `install.sh` installs for the Linux desktop entry (same © Theres Tears Records, all rights reserved, as the row above). |
 
 ## Dev tool
 
@@ -322,7 +400,7 @@ The full terms are in LICENSE and NOTICE; this summary doesn't replace them. JUC
 ## Credits
 
 - **Cloud Seed** reverb algorithm: Copyright (c) 2024 Ghost Note Audio / Ghost Note Engineering Ltd, MIT License. The licence text is in `libs/CloudSeedCore/LICENSE` and has to ship with the plug-in (Settings > About also shows the notice). Drum Foundry isn't made by Ghost Note Audio; it uses their open-source algorithm.
-- Fonts: **[Inter](https://github.com/rsms/inter)** (text) and **[Archivo](https://github.com/Omnibus-Type/Archivo)** (titles and the product name), both under the SIL Open Font License 1.1. The font files and their licences are in `assets/fonts/`, and they're compiled into the plug-in, so it looks the same on macOS and Windows.
+- Fonts: **[Inter](https://github.com/rsms/inter)** (text) and **[Archivo](https://github.com/Omnibus-Type/Archivo)** (titles and the product name), both under the SIL Open Font License 1.1. The font files and their licences are in `assets/fonts/`, and they're compiled into the plug-in, so it looks the same on macOS, Windows, and Linux.
 - Built with **JUCE**.
 
 ## Trademarks
