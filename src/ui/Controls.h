@@ -103,15 +103,22 @@ public:
     juce::AudioParameterChoice* getParameter() const noexcept { return choiceParam; }
 
     /** Lists the choices in groups, each under a heading (an empty heading: just a
-        separator), in the order given. Choice values (and the ids) don't change, so
-        it's display only. Choices left out of every group aren't listed. */
+        separator), in the order given. Choice values don't change, so it's display only.
+        Choices left out of every group aren't listed. A choice can be in several groups:
+        its first entry has the id choice index + 1, and each repeat a higher one of its
+        own (a ComboBox needs unique ids), which choiceForItemId() maps back. */
     void setItemGroups (const std::vector<std::pair<juce::String, std::vector<int>>>& groups);
 
+    /** The choice index an item id stands for. */
+    static constexpr int choiceForItemId (int id) noexcept { return (id - 1) % kRepeatIdStep; }
+
 private:
+    static constexpr int kRepeatIdStep = 1000; // more than any choice parameter has
+
     juce::ComboBox box;
     juce::AudioParameterChoice* choiceParam = nullptr;
-    // By item id (choice index + 1), not by position: JUCE's ComboBoxAttachment goes by
-    // position, which picks the wrong choice once setItemGroups() reorders the list.
+    // By item id, not by position: JUCE's ComboBoxAttachment goes by position, which picks
+    // the wrong choice once setItemGroups() reorders the list.
     std::unique_ptr<juce::ParameterAttachment> attachment;
     juce::String caption;
 

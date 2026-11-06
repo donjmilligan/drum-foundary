@@ -48,6 +48,7 @@ namespace drum::orderchecks { int run(); } // OrderChecks.cpp
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <map>
 #include <set>
 #include <thread>
 
@@ -6844,7 +6845,7 @@ int checkChoiceSelectors()
         {
             const int id = box.getItemId (k);
             box.setSelectedId (id, juce::sendNotificationSync);
-            if (param->getIndex() != id - 1)
+            if (param->getIndex() != ui::ChoiceSelector::choiceForItemId (id) || box.getSelectedId() != id)
             {
                 std::printf ("FAIL: choice selectors: picking %s in %s set %s\n", box.getItemText (k).toRawUTF8(),
                              param->paramID.toRawUTF8(), param->getCurrentChoiceName().toRawUTF8());
@@ -6853,6 +6854,44 @@ int checkChoiceSelectors()
             }
         }
     }
+
+    // The styles that do both are under both the Kick and the Snare heading of every Body
+    // menu, with a distinct id each, and every style can still be reached.
+    int bodyMenus = 0;
+    for (auto* sel : selectors)
+    {
+        auto* param = sel->getParameter();
+        if (param == nullptr || ! param->paramID.endsWith ("odyStyle"))
+            continue;
+        ++bodyMenus;
+        auto& box = sel->getComboBox();
+        std::map<juce::String, int> listed;
+        std::set<int> ids;
+        for (int k = 0; k < box.getNumItems(); ++k)
+        {
+            ++listed[box.getItemText (k)];
+            ids.insert (box.getItemId (k));
+        }
+        for (const juce::String name : { "808", "909", "FM", "Sine", "Saw", "Square", "Round Square", "Triangle" })
+            if (listed[name] != 2)
+            {
+                std::printf ("FAIL: choice selectors: %s lists %s %d times, not under both Kick and Snare\n",
+                             param->paramID.toRawUTF8(), name.toRawUTF8(), listed[name]);
+                ++failures;
+            }
+        if ((int) ids.size() != box.getNumItems() || (int) listed.size() != param->choices.size())
+        {
+            std::printf ("FAIL: choice selectors: %s has %d items, %zu ids, %zu of %d styles\n", param->paramID.toRawUTF8(),
+                         box.getNumItems(), ids.size(), listed.size(), param->choices.size());
+            ++failures;
+        }
+    }
+    if (bodyMenus < 2)
+    {
+        std::printf ("FAIL: choice selectors: found %d Body Style menus\n", bodyMenus);
+        ++failures;
+    }
+
     if (failures == 0)
         std::printf ("choice selectors: %zu drop-downs show their parameter through preset loads (%d checks), and picking sets it\n",
                      selectors.size(), checked);

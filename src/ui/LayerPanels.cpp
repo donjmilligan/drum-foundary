@@ -30,16 +30,20 @@ namespace
 
     const juce::String emDash (juce::CharPointer_UTF8 (" \xe2\x80\x94 "));
 
-    /** The Body Style menus, grouped: the kick bodies, the snare heads, the styles that do
-        both (the factory presets use them for kicks and snares), the basic waveforms, and
-        (the Body layer's) Sample. */
+    /** The Body Style menus, grouped: the kick bodies and the snare heads, each followed by
+        the styles that do both (808, 909, FM and the basic waveforms, listed under both
+        headings; it's the same sound either way), and (the Body layer's) Sample. */
     std::vector<std::pair<juce::String, std::vector<int>>> bodyStyleGroups (bool withSample)
     {
+        const std::vector<int> both { body808, body909, bodyFM, bodySine, bodySaw, bodySquare, bodyRoundSquare, bodyTriangle };
+        const auto withBoth = [&both] (std::vector<int> styles)
+        {
+            styles.insert (styles.end(), both.begin(), both.end());
+            return styles;
+        };
         std::vector<std::pair<juce::String, std::vector<int>>> g {
-            { "Kick",          { bodyKick, bodyRound, bodyTaper, bodyHard, bodyFold, bodyTonal } },
-            { "Snare",         { bodyClassic, bodyMembrane, bodyWood } },
-            { "Kick or Snare", { body808, body909, bodyFM } },
-            { "Basic",         { bodySine, bodySaw, bodySquare, bodyRoundSquare, bodyTriangle } } };
+            { "Kick",  withBoth ({ bodyKick, bodyRound, bodyTaper, bodyHard, bodyFold, bodyTonal }) },
+            { "Snare", withBoth ({ bodyClassic, bodyMembrane, bodyWood }) } };
         if (withSample)
             g.push_back ({ {}, { bodySample } });
         return g;

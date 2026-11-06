@@ -7,6 +7,8 @@
 #include "../Parameters.h"
 #include "../PluginProcessor.h"
 
+#include <map>
+
 namespace drum::ui
 {
 
@@ -334,12 +336,15 @@ ChoiceSelector::ChoiceSelector (APVTS& state, const juce::String& paramId, const
 
     attachment = std::make_unique<juce::ParameterAttachment> (*param, [this] (float index)
     {
-        box.setSelectedId (juce::roundToInt (index) + 1, juce::dontSendNotification);
+        // Already on an entry for this choice (a repeat the user just picked): stay on it.
+        const int choice = juce::roundToInt (index);
+        if (const int id = box.getSelectedId(); id <= 0 || choiceForItemId (id) != choice)
+            box.setSelectedId (choice + 1, juce::dontSendNotification);
     }, state.undoManager);
     box.onChange = [this]
     {
-        if (const int id = box.getSelectedId(); id > 0 && id - 1 != choiceParam->getIndex())
-            attachment->setValueAsCompleteGesture ((float) (id - 1));
+        if (const int id = box.getSelectedId(); id > 0 && choiceForItemId (id) != choiceParam->getIndex())
+            attachment->setValueAsCompleteGesture ((float) choiceForItemId (id));
     };
     attachment->sendInitialUpdate();
 }
@@ -349,6 +354,7 @@ void ChoiceSelector::setItemGroups (const std::vector<std::pair<juce::String, st
     if (choiceParam == nullptr)
         return;
     box.clear (juce::dontSendNotification);
+    std::map<int, int> timesListed;
     bool first = true;
     for (const auto& [heading, indices] : groups)
     {
@@ -359,7 +365,7 @@ void ChoiceSelector::setItemGroups (const std::vector<std::pair<juce::String, st
             box.addSectionHeading (heading);
         for (int i : indices)
             if (juce::isPositiveAndBelow (i, choiceParam->choices.size()))
-                box.addItem (choiceParam->choices[i], i + 1);
+                box.addItem (choiceParam->choices[i], i + 1 + kRepeatIdStep * timesListed[i]++);
     }
     box.setSelectedId (choiceParam->getIndex() + 1, juce::dontSendNotification);
 }
