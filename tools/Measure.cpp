@@ -10,17 +10,22 @@
 //       band energy, centroid, flatness, level. Skips files over 3 s and
 //       anything with "loop" or "bpm" in the name.
 //
-//   measure-presets [kick|snare|all] [--preset name]... [--set id=value]...
-//                   [--overrides file] [--csv out.csv] [--wav dir] [--emit]
+//   measure-presets [kick|snare|all] [--preset name]... [--source factory|user]
+//                   [--set id=value]... [--overrides file] [--csv out.csv] [--wav dir] [--emit]
+//                   [--note n] [--velocity 0..1]
 //       Renders factory presets with renderHit() (as the render command does),
 //       optionally with parameter / envelope overrides, and runs the same
-//       analysis. --emit prints each preset, overrides merged, in the
+//       analysis. Without --source, naming a preset also matches saved user presets,
+//       and a saved one with the same name overwrites the factory one's WAV: pass
+//       --source to get one or the other (--source user renders every saved preset).
+//       --emit prints each preset, overrides merged, in the
 //       FactoryPresets.cpp format. A second table (and extra CSV columns) gives
 //       what the plug-in's spectrum analyzer shows: the HIT PEAK (Hz, note, dB),
 //       the next distinct peaks, the LIVE readout, and both over other noise seeds.
 //
 // Overrides file: "[Preset Name]" (or "[*]" for all) starts a section; each line
-// is "paramId = value" or "pitch|body|noise = { x, y, curve }, { ... }". The
+// is "paramId = value", "chain = drive1 comp1 clip1 eq reverb" (FxChain::toString())
+// or "pitch|body|noise = { x, y, curve }, { ... }". The
 // point list accepts the FactoryPresets.cpp syntax as-is. Pitch y is in
 // semitones relative to Tune (the last point is pinned to 0 = Tune); body and
 // noise y are linear gain, 0..4 (+12 dB). Points are clamped to those ranges.
@@ -1134,9 +1139,17 @@ struct Overrides
 {
     std::vector<std::pair<juce::String, float>> values;
     std::map<int, std::vector<EnvPoint>> envs;
+    juce::String chain;
+
+    bool isEmpty() const { return values.empty() && envs.empty() && chain.isEmpty(); }
 
     void set (const juce::String& key, const juce::String& value)
     {
+        if (key.equalsIgnoreCase ("chain"))
+        {
+            chain = value;
+            return;
+        }
         for (int e = 0; e < numEnvs; ++e)
             if (key.equalsIgnoreCase (envelopeName ((EnvId) e)))
             {
@@ -1158,6 +1171,8 @@ struct Overrides
             set (k, juce::String (v, 6));
         for (const auto& [e, pts] : other.envs)
             envs[e] = pts;
+        if (other.chain.isNotEmpty())
+            chain = other.chain;
     }
 };
 
@@ -1224,7 +1239,8 @@ juce::String presetCode (const FactoryPreset& preset, const Overrides& o)
     for (const auto& [id, v] : values)
     {
         const bool isLevel = id.endsWith ("Level");
-        items.add ("{ " + id + ", " + (isLevel && v <= kMinLevelDb ? juce::String ("kMinLevelDb") : num (v)) + " }");
+        // Quoted: an extra layer's id has no pid constant to name it by.
+        items.add ("{ \"" + id + "\", " + (isLevel && v <= kMinLevelDb ? juce::String ("kMinLevelDb") : num (v)) + " }");
     }
 
     juce::String code = "        { \"" + juce::String (preset.name) + "\",\n          { " + items.joinIntoString (", ") + " },\n";
@@ -1234,21 +1250,26 @@ juce::String presetCode (const FactoryPreset& preset, const Overrides& o)
         auto it = o.envs.find (e);
         const auto& pts = it != o.envs.end() ? it->second
                         : (preset.points (e).empty() ? defaultEnvelope ((EnvId) e).getPoints() : preset.points (e));
-        code += "          " + pointsCode (pts) + (e + 1 < numCoreEnvs ? ",\n" : " },\n");
+        code += "          " + pointsCode (pts) + (e + 1 < numCoreEnvs ? ",\n" : "");
     }
+    const auto chain = o.chain.isNotEmpty() ? FxChain::fromString (o.chain).toString()
+                                            : (preset.chain != nullptr ? juce::String (preset.chain) : juce::String());
+    code += chain.isNotEmpty() ? ",\n          \"" + chain + "\" },\n" : " },\n";
     return code;
 }
 
 int cmdMeasurePresets (const juce::StringArray& args)
 {
     const auto cwd = juce::File::getCurrentWorkingDirectory();
-    juce::String kind = "all";
+    juce::String kind = "all", source;
     juce::StringArray nameFilters;
     Overrides global;
     std::map<juce::String, Overrides> perPreset;
     juce::File csvFile, wavDir;
     bool emit = false;
     double sr = 48000.0;
+    int note = 60;          // Tune is the pitch at this note, with Key Track on
+    float velocity = 1.0f;
 
     for (int i = 0; i < args.size(); ++i)
     {
@@ -1258,6 +1279,8 @@ int cmdMeasurePresets (const juce::StringArray& args)
             kind = a;
         else if (a == "--preset" && hasNext)
             nameFilters.add (args[++i]);
+        else if (a == "--source" && hasNext && (args[i + 1] == "factory" || args[i + 1] == "user"))
+            source = args[++i];
         else if (a == "--set" && hasNext)
         {
             const auto kv = args[++i];
@@ -1279,12 +1302,16 @@ int cmdMeasurePresets (const juce::StringArray& args)
             wavDir = cwd.getChildFile (args[++i]);
         else if (a == "--sr" && hasNext)
             sr = args[++i].getDoubleValue();
+        else if (a == "--note" && hasNext)
+            note = juce::jlimit (0, 127, args[++i].getIntValue());
+        else if (a == "--velocity" && hasNext)
+            velocity = juce::jlimit (0.0f, 1.0f, args[++i].getFloatValue());
         else if (a == "--emit")
             emit = true;
         else
         {
-            std::printf ("usage: measure-presets [kick|snare|all] [--preset name]... [--set id=value]... [--overrides file]"
-                         " [--csv out.csv] [--wav dir] [--emit] [--sr rate]\n");
+            std::printf ("usage: measure-presets [kick|snare|all] [--preset name]... [--source factory|user] [--set id=value]... [--overrides file]"
+                         " [--csv out.csv] [--wav dir] [--emit] [--sr rate] [--note n] [--velocity 0..1]\n");
             return 1;
         }
     }
@@ -1311,7 +1338,8 @@ int cmdMeasurePresets (const juce::StringArray& args)
         const auto& entry = entries[(size_t) i];
         // Init, and user presets, are only measured when asked for by name (Init is handy as a
         // blank canvas for --set; a user preset to compare against).
-        if ((! entry.isFactory || entry.name == "Init") && nameFilters.isEmpty())
+        if (source.isEmpty() ? (! entry.isFactory || entry.name == "Init") && nameFilters.isEmpty()
+                             : entry.isFactory != (source == "factory") || (entry.name == "Init" && nameFilters.isEmpty()))
             continue;
         if (kind != "all" && isKickPreset (entry.name) != (kind == "kick"))
             continue;
@@ -1345,18 +1373,20 @@ int cmdMeasurePresets (const juce::StringArray& args)
         }
         for (const auto& [e, pts] : o.envs)
             proc.setEnvelope ((EnvId) e, CurveEnvelope (pts, envelopeRange (e)));
+        if (o.chain.isNotEmpty())
+            proc.setFxChain (FxChain::fromString (o.chain));
 
         const auto params = proc.readParams();
         EnvTables tables;
         proc.bakeTables (tables);
-        const auto hit = renderHit (params, tables, sr);
+        const auto hit = renderHit (params, tables, sr, note, velocity);
         const auto m = analyse (toChannels (hit), sr);
 
-        const auto name = entry.name + (o.values.empty() && o.envs.empty() ? "" : " *");
+        const auto name = entry.name + (o.isEmpty() ? "" : " *");
         printTableRow (name, m);
         std::vector<juce::AudioBuffer<float>> otherSeeds;
         for (uint32_t k = 1; k <= 7; ++k)
-            otherSeeds.push_back (renderHit (params, tables, sr, 60, 1.0f, 0x5EEDu + k * 7919u));
+            otherSeeds.push_back (renderHit (params, tables, sr, note, velocity, 0x5EEDu + k * 7919u));
         const auto readout = analyserReadout (tapHost, hit, sr, otherSeeds);
         analyzerRows.push_back ({ name, { readout, m } });
 
@@ -1366,7 +1396,7 @@ int cmdMeasurePresets (const juce::StringArray& args)
         auto nominal = [&] (double t) {
             return (float) (params.tuneHz * std::exp2 (pitchEnv.evaluate ((float) (t / params.lengthMs)) / 12.0));
         };
-        csv.add (csvRow (entry.name, o.values.empty() && o.envs.empty() ? "factory" : "override", m)
+        csv.add (csvRow (entry.name, ! o.isEmpty() ? "override" : entry.isFactory ? "factory" : "user", m)
                  + "," + fmt (params.tuneHz) + "," + fmt (pitchEnv.evaluate (0.0f)) + "," + fmt (params.lengthMs)
                  + "," + fmt (nominal (2)) + "," + fmt (nominal (20)) + "," + fmt (nominal (40)) + "," + fmt (nominal (80))
                  + "," + analyzerCsv (readout));
