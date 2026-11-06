@@ -2,9 +2,9 @@
 
 [![Latest release](https://img.shields.io/github/v/release/donjmilligan/drum-foundary?include_prereleases&label=version)](https://github.com/donjmilligan/drum-foundary/releases/latest)
 
-**Version 0.1.1**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
+**Version 0.1.2**, by Theres Tears Records. See [Releases](https://github.com/donjmilligan/drum-foundary/releases) for the installers.
 
-**Mac and Windows installers links hosted by GitHub are in the installers/ directory.**
+**Mac and Windows installers links hosted by GitHub are in the [installers/](installers/README.md) directory.**
 
 **Watch the tutorial:** [Drum Foundry VST Demo (OPEN SOURCE Drum Synth)](https://www.youtube.com/watch?v=25Y4Oa3mcRc)
 
@@ -14,91 +14,7 @@
 
 A kick and snare synthesizer plugin in the spirit of drum synths like Sonic Academy's Kick 3, Plugin Boutique's BigKick, D16 Group's Punchbox and Sonic Charge's Microtonic (see [Trademarks](#trademarks)). You draw the pitch and amplitude envelopes directly over the rendered waveform, and build the sound from layers. Each layer can be synthesized or play a sample you import.
 
-- **Body**: the tonal drum head. It follows the drawn **pitch** curve and **body** level curve. The style menu is grouped into **Kick** (Kick and the kick bodies), **Snare** (Classic, Membrane, Wood), **Kick or Snare** (808, 909, FM), **Basic** waveforms, and Sample. Pick a style:
-  - **Classic**: sine, then triangle, then square, with an overtone and head modes.
-  - **Membrane**: a modal snare or tom head.
-  - **Wood**: a wooden shell and head. A resonator at the fundamental and eight damped wood modes (measured from wood snares, 1.6 to 5.8 times the fundamental), struck by a stick with a little grain. **Hardness** shortens the strike and brightens it, **Knock** sets the wood modes' level, **Spread** stretches them, and **Damping** goes from ringing to a dead, dry knock. Presets: FG Wood Snare, FG Wood Crack, FG Rim Ring and FG Knock Room.
-  - **808** and **909**: analog-style snare and kick circuits.
-  - **Kick**: a sine sweep with a saturation that fades out.
-  - **FM**: two-operator FM.
-  - Kick bodies, each with a factory preset that draws the tail shape that suits it:
-    - **Round**: a sine saturated into fat, rounded tops that stay full for the whole tail. **Warmth** makes it fuller on one side. Preset: Rounded Kick, a tail that holds and then rolls off.
-    - **Taper**: pointed peaks (sine, then triangle, then narrow spikes) that ease back to a sine. **Taper** sets how fast. Presets: Tapered Kick, a tail that thins from the start, and Psy Kick, the psytrance "fishtail" (a snappy front, a short duck, then the boom, an eighth note at 145 BPM).
-    - **Hard**: up to ~30 dB of clipping into a sustained, squared-off tail. **Bark** adds a partial before the clipper and **Crunch** is a second clipping stage. Presets: Hardstyle Kick and Gabber Kick.
-    - **Fold**: a sine wavefolder whose folds can open out over the hit (**Fold Decay**). Preset: Folded Techno Kick.
-    - **Tonal**: a sine plus harmonics 2–8, with **Bright**, **Stretch** (x2 = exact harmonics) and **Harm Decay**. Preset: Tonal Kick.
-  - Basic waveforms, neither kick nor snare, that follow the curves like the rest (Saw and Square are band-limited, so fast sweeps don't alias):
-    - **Sine**, with **Drive** (soft saturation).
-    - **Saw**, starting from 0 mid-ramp, with **Drive**.
-    - **Square**, with **Width** (pulse width, 50% down to 10%). It fades in over 0.5 ms so the hit doesn't start with a click.
-    - **Round Square**: a square with rounded corners. **Corner** sets how sharp they are.
-    - **Triangle**, with **Skew** (symmetric, leaning towards a saw).
-  - **Sample**: an imported one-shot.
-- **Noise**: the snare wires. It follows the drawn **noise** curve, through low-cut and high-cut filters. Styles are **Wires** (noise that the body modulates, like wires on the bottom head), **White**, **Pink**, **Metallic** (808-style square-wave cluster), **Crackle**, and **Sample**.
-- **Click**: the transient, as its own layer. Types are Tick, Snap, Stick, Rim, Pop, **Beater** (for kicks), **Clap** (3 or 4 noise bursts and a short tail), the modelled impacts below, or **Sample**.
-  - The modelled impacts sound like something being hit rather than a synthetic spike. A beater or stick makes contact for 0.1–1 ms, bounces, and its reflections ring a set of resonances. A short snap and a noise texture darken as they decay, and every hit varies a little. They were tuned against measurements of about 600 recorded kick clicks and rims: their rise (1–6 ms), how fast they darken, how long each band rings, and their resonances. **Tone** is the main resonance, and a higher Tone also hardens the contact. **Length** scales every decay, and 8 ms gives the material as measured.
-    - **Felt**: a soft kick beater, a knock around 0.9 kHz over a low thump.
-    - **Plastic**: a hard beater, a bright ting around 7 kHz over a low knock.
-    - **Skin**: the top end of a miked acoustic kick, one clear snap and a bright ring.
-    - **Wood**: a stick on a rim or block.
-    - **Tok**: the hardstyle tok, a pitched resonant knock.
-- **LFOs**: three, on their own tab. Drag one onto any knob to modulate it.
-- **Extra layers**: up to three more layers. Each can be another **Body** (any synthesised style), **Noise** or **Click** layer, or a **Sample** or **Sine** sub. Each has its own pitch and level curves, and each one can instead be coupled to the Body, Noise or Click curve, or set to Flat. It also has its own level, tune, offset, low and high cut, and pan. There's only one Body.
-- **Effects chain**: the strip under the display holds the effects in signal order. Drag a module to move it, click its light to switch it on or off, use × (or right-click) to take it out, and use **+** to add one. Click a module to show its controls in the panel below. Each module can be used once: **Drive** and **Drive 2** (2× oversampled Soft, Hard, Tube, Fold or Crush), the **EQ** (8 bands; its panel has a small version of the EQ's graph: drag a node for frequency and gain, scroll for Q, and **FULL** or a double-click opens the whole EQ), **Comp** and **Comp 2**, **Clip** and **Clip 2** (Soft, Hard, Tube, Tape or Fold, with Drive and Ceiling), and the gated **Reverb**. So you can compress and then clip, clip and then compress, or catch the peaks with one clipper, glue with a compressor and clip again at the end. The default chain is Drive → EQ → Reverb, which is what every older session and preset gets. The order is saved with the patch, and undo covers it. Changing it during playback fades out, switches and fades back in over about 20 ms, with no click. A compressor's chip shows its gain reduction as it works.
-  - **Compressor**: **Threshold**, **Ratio**, **Attack** (0.1 to 100 ms), **Release**, **Knee**, **Makeup**, **Mix** (below 100% is parallel compression) and **Style**. It's stereo-linked, with no look-ahead or latency. A slow attack (10–30 ms) lets a drum's transient through and clamps the body, which exaggerates the snap. A fast one catches the transient. Over the knobs, the panel shows what the compressor does to the hit: the waveform going in (grey), coming out (in colour), and the gain reduction hanging from the top, redrawn as you turn a knob. Hover it to read the reduction at any moment.
-  - **Style** models a classic compressor's behaviour: its detector, its timing and its gain cell. In every style the steady-state ratio is the Ratio knob's.
-    - **Clean** is transparent and feed-forward.
-    - **FET** works like a 1176. Its detector hears the output (feedback), its attack goes down to about 25 µs, its knee firms up at high ratios, and it adds odd-harmonic grit as it digs in (around 1% at 20 dB of reduction).
-    - **Opto** works like an LA-2A. It's an optical cell with an attack no faster than about 3 ms and a two-stage release: half lets go fast, and half lets go slowly, slower still the longer and harder it has been compressing. It has a wide knee and a little even-harmonic warmth.
-    - **Bus** works like an SSL bus compressor. It's a feed-forward VCA with a firm knee and an auto release: quick after a single hit, slow under sustained level, so it glues rather than pumps.
-    - **Punch** works like a dbx 160. It has an RMS detector, a wide "over easy" knee, an attack that speeds up the harder it's hit, and a release at a constant rate in dB per second (120 dB/s at a 120 ms Release), which makes for snappy drums.
-
-    The output compressor has the same Style menu, in the Level tab's header. These are our own models, written from how the hardware works and from the published design literature (Giannoulis, Massberg and Reiss, "Digital Dynamic Range Compressor Design: A Tutorial and Analysis", JAES 2012). No code from other compressor plug-ins is included.
-- **Output**: after the chain come a final **output low-cut and high-cut** (12, 24 or 48 dB/oct; each goes across the whole analyzer, 20 Hz to 20 kHz, so the high cut can go all the way down and the low cut all the way up), output gain, and the output stage, which the display's Level tab shows. The output stage is a clipper (**Soft**, **Hard**, **Tube**, **Tape** or **Fold**, with its own **Drive**, 0 to 24 dB into the clipper, and **Ceiling**, -12 to 0 dBFS), **Comp** (an output compressor: Threshold, Ratio, Attack, Release and Makeup, set from the Level tab's header), or **Off**, which lets the output go over 0 dBFS. The plug-in's latency is fixed: it doesn't change with the chain's order or with what's in it, and it's the same in every output mode. It's 98 samples at 44.1 kHz, 101 at 48 kHz (about 2.1 ms) and 86 at 96 kHz. That covers both Drives' oversamplers and all three clippers (each runs 8× oversampled, 4× at 88.2/96 kHz), whether or not they're in use.
-- **Spectrum analyzer**: shows the audio leaving the plugin, with the output filter curve, draggable low-cut and high-cut handles, a readout of the loudest frequency and its note, and a L/R meter. Its **HIT** mode shows the spectrum of the rendered hit without playing it.
-- **Sample browser**: browses and searches your sample folders, starting at the Ableton User Library. Click a file to audition it, and double-click or drag it onto a layer to load it.
-
-It builds as VST3, AU and Standalone on macOS, and as VST3 and Standalone on Windows (JUCE 8, CMake).
-
-## Download
-
-Download the newest version for your system:
-
-- **macOS:** [DrumFoundry-macOS.pkg](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-macOS.pkg)
-- **Windows:** [DrumFoundry-Windows-Setup.exe](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Windows-Setup.exe), or just the plug-in as [DrumFoundry-Windows-VST3.zip](https://github.com/donjmilligan/drum-foundary/releases/latest/download/DrumFoundry-Windows-VST3.zip)
-
-The same links are in [`installers/`](installers/README.md), and every version is on the [Releases page](https://github.com/donjmilligan/drum-foundary/releases).
-
-The installers aren't signed with an Apple or Microsoft certificate, so both systems warn you the first time. The steps below get past that.
-
-### macOS
-
-Download `DrumFoundry-macOS.pkg` (on the Releases page it's `DrumFoundry-<version>-macOS.pkg`). It's one installer for Apple Silicon and Intel Macs running macOS 11 (Big Sur) or later, and it installs:
-
-- the VST3, `Drum Foundry.vst3`, into `/Library/Audio/Plug-Ins/VST3`
-- the AU, `Drum Foundry.component`, into `/Library/Audio/Plug-Ins/Components`
-- the standalone app, `Drum Foundry.app`, into `/Applications`
-- the licence texts, into `/Library/Application Support/Drum Foundry/Licenses`
-
-To leave out the VST3, the AU or the app, click **Customize** in the installer and untick it.
-
-The first time you open the .pkg, macOS blocks it because it isn't signed. On macOS 15 (Sequoia) or later, click **Done**, open **System Settings ▸ Privacy & Security**, scroll down to the message about the installer, and click **Open Anyway**. On older macOS, right-click the .pkg, choose **Open**, then click **Open** again.
-
-After installing, open your DAW and rescan plug-ins. Drum Foundry is an instrument, from Theres Tears Records. If a DAW doesn't show the AU, run `killall -9 AudioComponentRegistrar` in Terminal, then rescan or restart the DAW.
-
-### Windows
-
-Download `DrumFoundry-Windows-Setup.exe` (on the Releases page it's `DrumFoundry-<version>-Windows-Setup.exe`; 64-bit Windows 10 or 11) and run it. It installs:
-
-- the VST3, `Drum Foundry.vst3`, into `C:\Program Files\Common Files\VST3`
-- the standalone app into `C:\Program Files\Drum Foundry`, with a Start-menu shortcut
-- the licence texts into the `Licenses` folder there
-
-If Windows says **Windows protected your PC**, click **More info**, then **Run anyway**. After installing, open your DAW and rescan plug-ins. To uninstall, go to **Settings ▸ Apps**, find Drum Foundry and click **Uninstall**.
-
-*Making the installers yourself:* on a Mac, `packaging/macos/make-pkg.sh` builds a universal Release and writes the .pkg to `installers/Mac/`. It's unsigned unless you set the Developer ID variables described at the top of the script. The Windows installer is built on Windows with [Inno Setup](https://jrsoftware.org/isinfo.php) 6.3 or later, after a Release build into `build\` (see [Build](#build)): run `ISCC /DAppVersion=0.1.1 packaging\windows\DrumFoundry.iss`, using the version from `CMakeLists.txt` (without it the installer is labelled 0.0.0). The installer goes to `installers\Windows\`. The installer files themselves are never committed (only `installers/README.md` is): every CI run keeps the installers (and a zip of the bare Windows VST3) as downloadable artifacts, and each release attaches them on the Releases page.
-
-*For developers:* a release is made by pushing a tag `vX.Y.Z` that matches the version in `CMakeLists.txt` (`project(DrumFoundry VERSION X.Y.Z ...)`) and the **Version X.Y.Z** line at the top of this README (CI fails if the README line doesn't match). The GitHub Actions workflow then builds both installers, plus the Windows VST3 zip, and attaches them to a new release, each under its versioned name and again under a name without the version (`DrumFoundry-macOS.pkg` and so on) so the download links above always fetch the newest release.
+This repo builds as VST3, AU and Standalone on macOS, and as VST3 and Standalone on Windows (JUCE 8, CMake).
 
 ## Build
 
@@ -216,6 +132,54 @@ On Windows, user presets are saved in `Music\Drum Foundry\Presets`, DRAG exports
 
 ## Using it
 
+### The Parts
+
+- **Body**: the tonal drum head. It follows the drawn **pitch** curve and **body** level curve. The style menu is grouped into **Kick** (Kick and the kick bodies) and **Snare** (Classic, Membrane, Wood), and both also list 808, 909, FM and the basic waveforms (the same sound under either heading), then Sample. Pick a style:
+  - **Classic**: sine, then triangle, then square, with an overtone and head modes.
+  - **Membrane**: a modal snare or tom head.
+  - **Wood**: a wooden shell and head. A resonator at the fundamental and eight damped wood modes (measured from wood snares, 1.6 to 5.8 times the fundamental), struck by a stick with a little grain. **Hardness** shortens the strike and brightens it, **Knock** sets the wood modes' level, **Spread** stretches them, and **Damping** goes from ringing to a dead, dry knock. Presets: FG Wood Snare, FG Wood Crack, FG Rim Ring and FG Knock Room.
+  - **808** and **909**: analog-style snare and kick circuits.
+  - **Kick**: a sine sweep with a saturation that fades out.
+  - **FM**: two-operator FM.
+  - Kick bodies, each with a factory preset that draws the tail shape that suits it:
+    - **Round**: a sine saturated into fat, rounded tops that stay full for the whole tail. **Warmth** makes it fuller on one side. Preset: Rounded Kick, a tail that holds and then rolls off.
+    - **Taper**: pointed peaks (sine, then triangle, then narrow spikes) that ease back to a sine. **Taper** sets how fast. Presets: Tapered Kick, a tail that thins from the start, and Psy Kick, the psytrance "fishtail" (a snappy front, a short duck, then the boom, an eighth note at 145 BPM).
+    - **Hard**: up to ~30 dB of clipping into a sustained, squared-off tail. **Bark** adds a partial before the clipper and **Crunch** is a second clipping stage. Presets: Hardstyle Kick and Gabber Kick.
+    - **Fold**: a sine wavefolder whose folds can open out over the hit (**Fold Decay**). Preset: Folded Techno Kick.
+    - **Tonal**: a sine plus harmonics 2–8, with **Bright**, **Stretch** (x2 = exact harmonics) and **Harm Decay**. Preset: Tonal Kick.
+  - Basic waveforms, listed under both Kick and Snare, that follow the curves like the rest (Saw and Square are band-limited, so fast sweeps don't alias):
+    - **Sine**, with **Drive** (soft saturation).
+    - **Saw**, starting from 0 mid-ramp, with **Drive**.
+    - **Square**, with **Width** (pulse width, 50% down to 10%). It fades in over 0.5 ms so the hit doesn't start with a click.
+    - **Round Square**: a square with rounded corners. **Corner** sets how sharp they are.
+    - **Triangle**, with **Skew** (symmetric, leaning towards a saw).
+  - **Sample**: an imported one-shot.
+- **Noise**: the snare wires. It follows the drawn **noise** curve, through low-cut and high-cut filters. Styles are **Wires** (noise that the body modulates, like wires on the bottom head), **White**, **Pink**, **Metallic** (808-style square-wave cluster), **Crackle**, and **Sample**.
+- **Click**: the transient, as its own layer. Types are Tick, Snap, Stick, Rim, Pop, **Beater** (for kicks), **Clap** (3 or 4 noise bursts and a short tail), the modelled impacts below, or **Sample**.
+  - The modelled impacts sound like something being hit rather than a synthetic spike. A beater or stick makes contact for 0.1–1 ms, bounces, and its reflections ring a set of resonances. A short snap and a noise texture darken as they decay, and every hit varies a little. They were tuned against measurements of about 600 recorded kick clicks and rims: their rise (1–6 ms), how fast they darken, how long each band rings, and their resonances. **Tone** is the main resonance, and a higher Tone also hardens the contact. **Length** scales every decay, and 8 ms gives the material as measured.
+    - **Felt**: a soft kick beater, a knock around 0.9 kHz over a low thump.
+    - **Plastic**: a hard beater, a bright ting around 7 kHz over a low knock.
+    - **Skin**: the top end of a miked acoustic kick, one clear snap and a bright ring.
+    - **Wood**: a stick on a rim or block.
+    - **Tok**: the hardstyle tok, a pitched resonant knock.
+- **LFOs**: three, on their own tab. Drag one onto any knob to modulate it.
+- **Extra layers**: up to three more layers. Each can be another **Body** (any synthesised style), **Noise** or **Click** layer, or a **Sample** or **Sine** sub. Each has its own pitch and level curves, and each one can instead be coupled to the Body, Noise or Click curve, or set to Flat. It also has its own level, tune, offset, low and high cut, and pan. There's only one Body.
+- **Effects chain**: the strip under the display holds the effects in signal order. Drag a module to move it, click its light to switch it on or off, use × (or right-click) to take it out, and use **+** to add one. Click a module to show its controls in the panel below. Each module can be used once: **Drive** and **Drive 2** (2× oversampled Soft, Hard, Tube, Fold or Crush), the **EQ** (8 bands; its panel has a small version of the EQ's graph: drag a node for frequency and gain, scroll for Q, and **FULL** or a double-click opens the whole EQ), **Comp** and **Comp 2**, **Clip** and **Clip 2** (Soft, Hard, Tube, Tape or Fold, with Drive and Ceiling), and the gated **Reverb**. So you can compress and then clip, clip and then compress, or catch the peaks with one clipper, glue with a compressor and clip again at the end. The default chain is Drive → EQ → Reverb, which is what every older session and preset gets. The order is saved with the patch, and undo covers it. Changing it during playback fades out, switches and fades back in over about 20 ms, with no click. A compressor's chip shows its gain reduction as it works.
+  - **Compressor**: **Threshold**, **Ratio**, **Attack** (0.1 to 100 ms), **Release**, **Knee**, **Makeup**, **Mix** (below 100% is parallel compression) and **Style**. It's stereo-linked, with no look-ahead or latency. A slow attack (10–30 ms) lets a drum's transient through and clamps the body, which exaggerates the snap. A fast one catches the transient. Over the knobs, the panel shows what the compressor does to the hit: the waveform going in (grey), coming out (in colour), and the gain reduction hanging from the top, redrawn as you turn a knob. Hover it to read the reduction at any moment.
+  - **Style** models a classic compressor's behaviour: its detector, its timing and its gain cell. In every style the steady-state ratio is the Ratio knob's.
+    - **Clean** is transparent and feed-forward.
+    - **FET** works like a 1176. Its detector hears the output (feedback), its attack goes down to about 25 µs, its knee firms up at high ratios, and it adds odd-harmonic grit as it digs in (around 1% at 20 dB of reduction).
+    - **Opto** works like an LA-2A. It's an optical cell with an attack no faster than about 3 ms and a two-stage release: half lets go fast, and half lets go slowly, slower still the longer and harder it has been compressing. It has a wide knee and a little even-harmonic warmth.
+    - **Bus** works like an SSL bus compressor. It's a feed-forward VCA with a firm knee and an auto release: quick after a single hit, slow under sustained level, so it glues rather than pumps.
+    - **Punch** works like a dbx 160. It has an RMS detector, a wide "over easy" knee, an attack that speeds up the harder it's hit, and a release at a constant rate in dB per second (120 dB/s at a 120 ms Release), which makes for snappy drums.
+
+    The output compressor has the same Style menu, in the Level tab's header. These are our own models, written from how the hardware works and from the published design literature (Giannoulis, Massberg and Reiss, "Digital Dynamic Range Compressor Design: A Tutorial and Analysis", JAES 2012). No code from other compressor plug-ins is included.
+- **Output**: after the chain come a final **output low-cut and high-cut** (12, 24 or 48 dB/oct; each goes across the whole analyzer, 20 Hz to 20 kHz, so the high cut can go all the way down and the low cut all the way up), output gain, and the output stage, which the display's Level tab shows. The output stage is a clipper (**Soft**, **Hard**, **Tube**, **Tape** or **Fold**, with its own **Drive**, 0 to 24 dB into the clipper, and **Ceiling**, -12 to 0 dBFS), **Comp** (an output compressor: Threshold, Ratio, Attack, Release and Makeup, set from the Level tab's header), or **Off**, which lets the output go over 0 dBFS. The plug-in's latency is fixed: it doesn't change with the chain's order or with what's in it, and it's the same in every output mode. It's 98 samples at 44.1 kHz, 101 at 48 kHz (about 2.1 ms) and 86 at 96 kHz. That covers both Drives' oversamplers and all three clippers (each runs 8× oversampled, 4× at 88.2/96 kHz), whether or not they're in use.
+- **Spectrum analyzer**: shows the audio leaving the plugin, with the output filter curve, draggable low-cut and high-cut handles, a readout of the loudest frequency and its note, and a L/R meter. Its **HIT** mode shows the spectrum of the rendered hit without playing it.
+- **Sample browser**: browses and searches your sample folders, starting at the Ableton User Library. Click a file to audition it, and double-click or drag it onto a layer to load it.
+
+### The Controls
+
 - **Display:** double-click to add a point, and double-click (or right-click) a point to remove it. Drag a segment's midpoint handle to bend that segment. Shift-drag gives fine vertical control. Scroll or pinch to zoom the time axis, and **FIT** resets the zoom.
 - **Length** stretches all three envelopes together.
 - **Envelopes:** the display has two tabs, **PITCH** and **LEVEL**. Every layer has its own pitch and level curve, and the display shows the curve of the layer you select above: a click anywhere on the Body panel or a Layers tab (its knobs and menus included) brings that layer's curves up, even from the LFO tab. Its name is shown next to the tabs, in the layer's colour. **ALL**, next to the name, shows every layer's curve on the tab together (all the pitch curves, or all the level curves), the others dimmed and named. A switched-off layer is dashed and marked (OFF). Click a dimmed one to edit it (the Layers panel follows). ALL is remembered with the session. For an extra layer, the menu next to its name sets where the curve on that tab comes from: **OWN** (its own curve), **BODY**, **NOISE** or **CLICK** (coupled to that layer's curve, so editing it from either tab changes both), or **FLAT** (full level, or no pitch movement). Pitch and Level are set separately. Switching from a coupled curve to OWN starts the layer's own curve as a copy of it, so the sound doesn't jump. A new layer starts on its own curves, copied from the Body (Body, Sine), the Noise layer (Noise) or flat (Click; Sample gets the Body's level). Sessions and presets saved before this keep their sound: their layers come back coupled the way they played.
@@ -283,6 +247,7 @@ On Windows, user presets are saved in `Music\Drum Foundry\Presets`, DRAG exports
 | `assets/Theres_Tears_Logo_Title_white_site.png`, `assets/Theres_Tears_Icon.png` | The THRSTRS (Theres Tears Records) logo, compiled in for the header's and Settings' "by" line, and the standalone app's icon (THRSTRS on a dark tile). These images are © Theres Tears Records, all rights reserved: they are not covered by any licence of the code or of the libraries it uses, and may not be reused without permission. |
 | `assets/fonts/` | The UI's fonts, compiled in: Inter Regular and SemiBold (text, `uiFont`), Archivo SemiExpanded SemiBold (titles, `titleFont`) and Archivo Expanded Bold and ExtraLight (the product name: a bold DRUM, `wordmarkFont`, and a thin FOUNDRY, `wordmarkThinFont`), with their SIL Open Font License texts. |
 | `tools/Tools.cpp`, `tools/Measure.*` | Dev tool (see below). Not shipped. |
+| `tools/compare_presets.py` | Renders presets and compares them with your own sample packs (see below). Not shipped. |
 
 ## Dev tool
 
@@ -295,10 +260,20 @@ DrumFoundryTools check                   # NaN/level checks on all presets, stat
 DrumFoundryTools bench                   # realtime CPU cost, with the reverb off and on, per style, and the display render time
 DrumFoundryTools styles renders-engine   # one example hit per body style (snare and kick), with the measured fundamental
 DrumFoundryTools measure <files|dirs>    # analyze one-shots: fundamental, pitch sweep, body/wire decay, band energy (--csv out.csv)
-DrumFoundryTools measure-presets snare   # the same analysis on the factory presets (kick|snare|all; --set id=value to try changes)
+DrumFoundryTools measure-presets snare   # the same analysis on the factory presets (kick|snare|all; --set id=value to try changes; --source user for saved presets)
 DrumFoundryTools emit-preset a.drumpreset # saved presets in the FactoryPresets.cpp format, to ship a sound saved from the plug-in
 DrumFoundryTools analyzer shots          # spectrum analyzer screenshots
 DrumFoundryTools samples-ui shots        # sample browser and sample strip screenshots
+```
+
+`tools/compare_presets.py` renders the presets and compares each with the kicks, snares and rims in your own sample packs. It only measures those samples and never copies them. It needs Python 3 and nothing else:
+
+```sh
+python3 tools/compare_presets.py --label before                  # all factory presets; report in ~/Music/Drum Foundry/Preset Auditions/before
+python3 tools/compare_presets.py --label after --baseline before # the same, with what changed since "before"
+python3 tools/compare_presets.py --label try --preset "FG Rim" --overrides try.txt  # one preset, with changes, no rebuild
+python3 tools/compare_presets.py --label user --source user      # your saved presets
+python3 tools/compare_presets.py --label c1 --note 36 --velocity 0.6  # as played on another note, softer
 ```
 
 Validation used so far:

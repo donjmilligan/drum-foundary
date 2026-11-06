@@ -269,7 +269,7 @@ jobs:
           done
 
           # The same files without the version in their names, so the links in
-          # README.md and installers/README.md
+          # installers/README.md
           # (releases/latest/download/DrumFoundry-macOS.pkg and so on) always
           # fetch the newest release.
           for f in "${files[@]}"; do
